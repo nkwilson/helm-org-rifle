@@ -1134,12 +1134,14 @@ Could be good for testing e.g. negation, to make sure I don't break it.
 ** TODO Search files
 
 #+BEGIN_SRC elisp
-  (helm :sources (helm-build-in-file-source "test" "~/org/inbox.org"
+  (let ((helm-candidate-separator " "))(helm :sources (helm-build-in-file-source "test" "~/src/helm-org-rifle/test.org"
                                             :search 'org-entry-re-search-forward
 :get-line 'helm-org-rifle-get-entry
-:before-init-hook (lambda () (when (org-before-first-heading-p)
+:init (lambda () (when (org-before-first-heading-p)
 (outline-next-heading)))
+:filtered-candidate-transformer 'helm-org-rifle-filtered-candidate-transformer
                                             :match 'identity
+:requires-pattern t
                                             ;; Setting :delayed to a number causes
                                             ;; strange behavior, duplicated results,
                                             ;; causes the :candidates function to be
@@ -1153,13 +1155,7 @@ Could be good for testing e.g. negation, to make sure I don't break it.
                                                      "Show entry" 'helm-org-rifle-show-entry
                                                      "Show entry in indirect buffer" 'helm-org-rifle-show-entry-in-indirect-buffer
                                                      "Show entry in real buffer" 'helm-org-rifle-show-entry-in-real-buffer)
-                                            :keymap helm-org-rifle-map))
-(helm-org-rifle-get-entry)
-#+END_SRC
-
-#+BEGIN_SRC elisp
-(org-entry-beginning-position)
-(org-entry-end-position)
+                                            :keymap helm-org-rifle-map)))
 #+END_SRC
 
 #+BEGIN_SRC elisp
@@ -1168,12 +1164,6 @@ Could be good for testing e.g. negation, to make sure I don't break it.
     (save-excursion
       (goto-char (org-entry-beginning-position))
       (re-search-forward pattern (org-entry-end-position) t)))
-  
-  (defun org-entry-re-search-forward (pattern)
-    "Move point to the beginning of the next entry that matches PATTERN."
-    (outline-next-heading)
-    (while (not (org-entry-matches-p pattern))
-      (outline-next-heading)))
   
   (defun org-entry-re-search-forward (pattern)
     "Move point to the beginning of the next entry that matches PATTERN."
@@ -1217,8 +1207,8 @@ Could be good for testing e.g. negation, to make sure I don't break it.
         ;; to work around that by widening the buffer first.
         (widen)
         (goto-char (point-min))
-(when (org-before-first-heading-p)
-(outline-next-heading))
+        (when (org-before-first-heading-p)
+          (outline-next-heading))
         ;; Surely there's a "real" macro or function to do this, but I
         ;; can't seem to find it.  -iterate runs a certain number of
         ;; times, and -unfold changes the seed on each iteration and
@@ -1232,12 +1222,11 @@ Could be good for testing e.g. negation, to make sure I don't break it.
     `(cl-loop for ret = (funcall ,func ,@args)
               while ret
               collect ret))
-  
-  (acc 'org-entry-get-next-matching-entry "blueberry")
 #+END_SRC
 
-#+BEGIN_SRC elisp
+These macros might be useful:
 
+#+BEGIN_SRC elisp
 (defmacro --when-let (func &body)
   (let (it)
     (setq it (funcall ,func))
@@ -1260,6 +1249,8 @@ Could be good for testing e.g. negation, to make sure I don't break it.
            (message "%s" res))
 
 #+END_SRC
+
+Thought maybe I could transform =helm-mm-3-search-base= but...eh...
 
 #+BEGIN_SRC elisp
 (defun org-helm-mm-3-search-base (pattern searchfn1 searchfn2)
@@ -1338,3 +1329,6 @@ Emacs
 
 helm :)
 
+** Heading J:
+
+John

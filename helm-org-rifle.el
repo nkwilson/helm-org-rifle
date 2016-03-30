@@ -459,3 +459,38 @@ created."
 (let-while (res (float-time))
            (sleep-for 1)
            (message "%s" res))
+
+(defun helm-org-rifle-filtered-candidate-transformer (candidates &rest source)
+  (when candidates
+    (cl-loop with end
+             for candidate in candidates
+             for contents = (car candidate)
+             for pos = (cdr candidate)
+             for token in (s-split-words helm-pattern)
+             for re = (rx-to-string `(and (repeat 0 ,helm-org-rifle-context-characters not-newline)
+                                          (eval token)
+                                          (repeat 0 ,helm-org-rifle-context-characters not-newline)))
+             for match = (string-match re contents end)
+             if match
+             do (setq end (match-end 0))
+             and collect (match-string 0 contents) into strings
+             else do (setq end nil)
+             finally return (cons (s-join "..." strings) pos))))
+
+(defun helm-org-rifle-filtered-candidate-transformer (candidate c)
+  (message "%s %s" candidate c))
+(let ((helm-pattern "blah blah blah"))
+  (helm-org-rifle-filtered-candidate-transformer "okay blah okay" 12))
+
+(defun helm-org-rifle-filtered-candidate-transformer (contents pos)
+  (let* ((matching-strings (cl-loop with end
+                                    for token in (s-split-words helm-pattern)
+                                    for re = (rx-to-string `(and (repeat 0 ,helm-org-rifle-context-characters not-newline)
+                                                                 (eval token)
+                                                                 (repeat 0 ,helm-org-rifle-context-characters not-newline)))
+                                    for match = (string-match re contents end)
+                                    if match
+                                    do (setq end (match-end 0))
+                                    and collect match
+                                    else do (setq end nil))))
+    (cons (s-join "..." matching-strings) pos)))
