@@ -463,19 +463,23 @@ created."
 (defun helm-org-rifle-filtered-candidate-transformer (candidates &rest source)
   (when candidates
     (cl-loop with end
+             with tokens = (s-split-words helm-pattern)
+             with regexps = (cl-loop for token in tokens
+                                     collect (rx-to-string `(and (repeat 0 ,helm-org-rifle-context-characters not-newline)
+                                                                 (eval token)
+                                                                 (repeat 0 ,helm-org-rifle-context-characters not-newline))))
              for candidate in candidates
              for contents = (car candidate)
              for pos = (cdr candidate)
-             for token in (s-split-words helm-pattern)
-             for re = (rx-to-string `(and (repeat 0 ,helm-org-rifle-context-characters not-newline)
-                                          (eval token)
-                                          (repeat 0 ,helm-org-rifle-context-characters not-newline)))
-             for match = (string-match re contents end)
-             if match
-             do (setq end (match-end 0))
-             and collect (match-string 0 contents) into strings
-             else do (setq end nil)
-             finally return (cons (s-join "..." strings) pos))))
+             collect (cons (cl-loop
+                            for re in regexps
+                            for match = (string-match re contents end)
+                            if match
+                            do (setq end (match-end 0))
+                            and collect (match-string 0 contents) into strings
+                            else do (setq end nil)
+                            finally return (s-join "..." strings))
+                           pos))))
 
 (defun helm-org-rifle-filtered-candidate-transformer (candidate c)
   (message "%s %s" candidate c))
