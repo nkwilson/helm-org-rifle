@@ -471,6 +471,7 @@ created."
              for candidate in candidates
              for contents = (car candidate)
              for pos = (cdr candidate)
+             for end = nil
              collect (cons (cl-loop
                             for re in regexps
                             for match = (string-match re contents end)
