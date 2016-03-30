@@ -245,7 +245,6 @@ That is, if its name does not start with a space."
                   ;; entered, even though it is delayed for
                   ;; right amount of time.  But setting it to
                   ;; t works fine, and...fast...
-                  :delayed t
                   :multiline t
                   :volatile t
                   :action (helm-make-actions
@@ -437,3 +436,26 @@ created."
 (provide 'helm-org-rifle)
 
 ;;; helm-org-rifle.el ends here
+
+
+
+(defmacro --when-let (func &body)
+  (let (it)
+    (setq it (funcall ,func))
+    (when it
+      ,@body)))
+
+(--when-let "yes"
+  (message it))
+
+(defmacro* let-while ((var expression) &rest body)
+  ;; https://github.com/magnars/dash.el/issues/32
+  (let ((expression-fn (make-symbol "expression-fn")))
+    `(let ((,expression-fn (lambda () ,expression)))
+       (while (let ((,var (funcall ,expression-fn)))
+                ,@body
+                ,var)))))
+
+(let-while (res (float-time))
+           (sleep-for 1)
+           (message "%s" res))
