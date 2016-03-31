@@ -1131,7 +1131,7 @@ Fixed.  Thanks to [[https://www.reddit.com/user/washy99999][/u/washy9999]] for t
 
 Could be good for testing e.g. negation, to make sure I don't break it.
 
-** TODO Search files
+** TODO More idiomatic Helm usage
 
 #+BEGIN_SRC elisp
   (let ((helm-candidate-separator " "))
@@ -1160,6 +1160,9 @@ Could be good for testing e.g. negation, to make sure I don't break it.
 #+END_SRC
 
 #+BEGIN_SRC elisp
+  ;;;; Good stuff
+  ;; I'll probably use these.
+  
   (defun org-entry-matches-p (pattern)
     "Return non-nil if the current org-mode entry matches PATTERN."
     (save-excursion
@@ -1175,54 +1178,66 @@ Could be good for testing e.g. negation, to make sure I don't break it.
       (unless (outline-next-heading)
         (return))))
   
-  (defun org-entry-get-next-matching-entry-contents (pattern)
-    "Return contents of next entry that matches PATTERN."
-    (when (org-entry-re-search-forward pattern)
-      (buffer-substring-no-properties (org-entry-beginning-position) (org-entry-end-position))))
-  
-  (defun org-entry-get-next-matching-entry-point (pattern)
-    "Return starting point of next entry that matches PATTERN."
-    (when (org-entry-re-search-forward pattern)
-      (org-entry-beginning-position)))
-  
-  (defun org-get-next-matching-entry (pattern)
-    "Return (CONTENTS . BEGINNING-POINT) for the next entry that matches PATTERN."
-    (when (org-entry-re-search-forward pattern)
-      (cons (org-get-entry-contents) (point))))
-  
-  (defun helm-org-rifle-get-entry (&rest args)
-    "Return (CONTENTS . BEGINNING-POINT) for the current entry."
-    (cons (org-get-entry-contents) (point)))
+  (defmacro helm-org-rifle-accumulate (func &rest args)
+    `(cl-loop for ret = (funcall ,func ,@args)
+              while ret
+              collect ret))
   
   (defun org-get-entry-contents (&optional point)
     "Get contents of entry (not subtrees) at POINT or current point."
     (buffer-substring-no-properties (org-entry-beginning-position) (org-entry-end-position)))
   
+  (defun org-get-current-entry-pair (&rest args)
+    "Return (CONTENTS . BEGINNING-POINT) for the current entry (NOT the whole subtree)."
+    ;; Probably want to add the heading as a separate item in the return
+    (cons (org-get-entry-contents) (point)))
+  
+  (defun org-get-next-matching-entry-pair (pattern)
+    "Return (CONTENTS . BEGINNING-POSITION) for the next entry that matches PATTERN."
+    (when (org-entry-re-search-forward pattern)
+      (org-get-current-entry-pair)))
+  
   (defun org-get-matching-entries (pattern)
     "Return list of contents of entries that match PATTERN."
-    (save-excursion
-      (save-restriction
-        ;; (outline-next-heading) seems to get stuck, unable to go past
-        ;; invisible (folded) headings, even though its docstring says
-        ;; "move to the next (possibly invisible) heading."  So we have
-        ;; to work around that by widening the buffer first.
-        (widen)
-        (goto-char (point-min))
-        (when (org-before-first-heading-p)
-          (outline-next-heading))
-        ;; Surely there's a "real" macro or function to do this, but I
-        ;; can't seem to find it.  -iterate runs a certain number of
-        ;; times, and -unfold changes the seed on each iteration and
-        ;; prepends instead of appends.
-        (helm-org-rifle-accumulate 'org-get-next-matching-entry pattern))))
+    (org-with-wide-buffer
+     ;; (outline-next-heading) seems to get stuck, unable to go past
+     ;; invisible (folded) headings, even though its docstring says
+     ;; "move to the next (possibly invisible) heading."  So we have
+     ;; to work around that by widening the buffer first.
+     (goto-char (point-min))
+     (when (org-before-first-heading-p)
+       (outline-next-heading))
+     ;; Surely there's a "real" macro or function to do this, but I
+     ;; can't seem to find it.  -iterate runs a certain number of
+     ;; times, and -unfold changes the seed on each iteration and
+     ;; prepends instead of appends.
+     (helm-org-rifle-accumulate 'org-get-next-matching-entry-pair pattern)))
   
-  (org-entry-re-search-forward "blueberry")
-  (org-get-matching-entries "blueberry")
+  ;;;; Others
+  ;; Not sure if I need these, but they might be useful.
   
-  (defmacro helm-org-rifle-accumulate (func &rest args)
-    `(cl-loop for ret = (funcall ,func ,@args)
-              while ret
-              collect ret))
+  (defun org-entry-get-next-matching-entry-contents (pattern)
+    "Return contents of next entry that matches PATTERN."
+    (when (org-entry-re-search-forward pattern)
+      (org-get-entry-contents))
+    
+    (defun org-entry-get-next-matching-entry-point (pattern)
+      "Return starting point of next entry that matches PATTERN."
+      (when (org-entry-re-search-forward pattern)
+        (org-entry-beginning-position)))
+    
+    
+    
+  
+    
+    
+    
+    
+    
+    (org-entry-re-search-forward "blueberry")
+    (org-get-matching-entries "blueberry")
+    
+    
 #+END_SRC
 
 These macros might be useful:
