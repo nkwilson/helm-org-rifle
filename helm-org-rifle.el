@@ -187,10 +187,11 @@ So be it, until victory is ours and there is no enemy, but
 peace!"
   (interactive)
   (let ((helm-candidate-separator " ")
-        (helm-input-idle-delay 2)
-        (helm-idle-delay 2))
+        ;; (helm-input-idle-delay 2)
+        ;; (helm-idle-delay 2)
+        )
     (helm :sources (helm-org-rifle-get-sources)
-          :delayed 2)))
+          :delayed t)))
 
 ;;;###autoload
 (defun helm-org-rifle-current-buffer ()
@@ -239,11 +240,8 @@ That is, if its name does not start with a space."
   (let* (;; (helm-input-idle-delay 2)
          ;; (helm-idle-delay 2)
          (source (helm-build-sync-source (buffer-name buffer)
-                   :init (lambda ()
-                           (message "Source init: %s" (helm-attr 'buffer)))
                    :candidates (lambda ()
                                  (when (s-present? helm-pattern)
-                                   (message "CALLED %s: %s" (helm-attr 'buffer) (float-time))
                                    (helm-org-rifle-get-candidates-in-buffer (helm-attr 'buffer) helm-pattern)))
                    :match 'identity
                    ;; Setting :delayed to a number causes
@@ -253,7 +251,7 @@ That is, if its name does not start with a space."
                    ;; entered, even though it is delayed for
                    ;; right amount of time.  But setting it to
                    ;; t works fine, and...fast...
-                   :delayed 2
+                   :delayed t
                    :multiline t
                    :volatile t
                    :action (helm-make-actions
@@ -264,8 +262,8 @@ That is, if its name does not start with a space."
     (helm-attrset 'buffer buffer source)
     source))
 
-;; (setq helm-input-idle-delay 0.01
-;;       helm-idle-delay 0.01)
+(setq helm-input-idle-delay 0.01
+      helm-idle-delay 0.01)
 
 (defun helm-org-rifle-get-sources ()
   "Return list of sources configured for helm-org-rifle.
@@ -287,9 +285,106 @@ One source is returned for each open Org buffer."
             (regexp-quote token)
             helm-org-rifle-re-end-part)))
 
+(defun helm-org-rifle-get-matching-entries (pattern &optional negation)
+  "Return list of contents of entries that match PATTERN but not NEGATION."
+  (org-with-wide-buffer
+   ;; (outline-next-heading) seems to get stuck, unable to go past
+   ;; invisible (folded) headings, even though its docstring says
+   ;; "move to the next (possibly invisible) heading."  So we have
+   ;; to work around that by widening the buffer first.
+   (goto-char (point-min))
+   (when (org-before-first-heading-p)
+     (outline-next-heading))
+   ;; Surely there's a "real" macro or function to do this, but I
+   ;; can't seem to find it.  -iterate runs a certain number of
+   ;; times, and -unfold changes the seed on each iteration and
+   ;; prepends instead of appends.
+   (helm-org-rifle-accumulate 'helm-org-rifle-get-next-matching-entry pattern negation)))
+
+(defmacro helm-org-rifle-accumulate (func &rest args)
+  `(cl-loop for ret = (funcall ,func ,@args)
+            while ret
+            collect ret))
+(setq argh 0)
+(defun helm-org-rifle-get-next-matching-entry (pattern &optional negation)
+  "Return next entry that matches PATTERN but not NEGATION."
+  (when (helm-org-rifle-re-search-forward-entry pattern negation)
+    (incf argh)
+    (helm-org-rifle-get-current-entry)))
+(message "CALLED IT %s TIMES" argh)
+
+(defun helm-org-rifle-re-search-forward-entry (pattern &optional negation)
+  "Move point to the beginning of the next entry that matches PATTERN but not NEGATION."
+  (outline-next-heading)
+  (when (re-search-forward pattern nil t)
+    (outline-back-to-heading t)
+    (if negation
+        (not (helm-org-rifle-entry-matches-p negation))
+      t))
+  ;; (cl-do (_)
+  ;;     ((and (helm-org-rifle-entry-matches-p pattern)
+  ;;           (not (when negation
+  ;;                  (helm-org-rifle-entry-matches-p negation))))
+  ;;      t)
+  ;;   (unless (re-search-forward pattern nil t)
+  ;;     (return)))
+  )
+
+(defun helm-org-rifle-get-current-entry (&rest args)
+  "Return (HEADING CONTENTS BEGINNING-POINT) for the current entry (NOT the whole subtree)."
+  ;; Probably want to add the heading as a separate item in the return
+  (let* ((components (org-heading-components))
+         (path (when helm-org-rifle-show-path
+                 (org-get-outline-path)))
+         (priority (when (nth 3 components)
+                     ;; TODO: Is there a better way to do this?  The
+                     ;; s-join leaves an extra space when there's no
+                     ;; priority.
+                     (concat "[#" (char-to-string (nth 3 components)) "]")))
+         (tags (nth 5 components))
+         (heading-string (if helm-org-rifle-show-todo-keywords
+                             (s-join " " (list (nth 2 components) priority (nth 4 components)))
+                           (nth 4 components)))
+         (fontified-heading (if (and helm-org-rifle-show-path
+                                     path)
+                                (if helm-org-rifle-fontify-headings
+                                    (org-format-outline-path (append path
+                                                                     (list heading-string)
+                                                                     (when helm-org-rifle-show-tags
+                                                                       (concat tags " "))))
+                                  ;; Not fontifying
+                                  (s-join "/" (append path
+                                                      (list heading-string)
+                                                      (when helm-org-rifle-show-tags
+                                                        tags))))
+                              ;; No path or not showing path
+                              (if helm-org-rifle-fontify-headings
+                                  (helm-org-rifle-fontify-like-in-org-mode
+                                   (s-join " " (list (s-repeat (nth 0 components) "*")
+                                                     heading-string
+                                                     (when helm-org-rifle-show-tags
+                                                       (concat tags " ")))))
+                                ;; Not fontifying
+                                (s-join " " (list (s-repeat (nth 0 components) "*")
+                                                  heading-string
+                                                  (when helm-org-rifle-show-tags
+                                                    tags))))))
+         (matches-with-context (cl-loop with end = (org-entry-end-position)
+                                        while (re-search-forward context-re end t)
+                                        do (setq end (match-end 0))
+                                        collect (match-string-no-properties 0))))
+    ;; Return list
+    (list fontified-heading matches-with-context (point))))
 
 
-(defun better (buffer input)
+(defun helm-org-rifle-entry-matches-p (pattern)
+  "Return non-nil if the current org-mode entry matches PATTERN."
+  (save-excursion
+    (goto-char (org-entry-beginning-position))
+    (re-search-forward pattern (org-entry-end-position) t)))
+
+
+(defun helm-org-rifle-get-candidates-in-buffer (buffer input)
   "Return candidates in BUFFER for INPUT.
 
 INPUT is a string.  Candidates are returned in this
@@ -316,7 +411,10 @@ begins."
          (case-fold-search t)
          results)
     (with-current-buffer buffer
-      (org-get-matching-entries match-all-tokens-re negations-re))))
+      (helm-org-rifle-get-matching-entries match-all-tokens-re negations-re))))
+
+
+
 
 (defun helm-org-rifle-fontify-like-in-org-mode (s &optional odd-levels)
   "Fontify string S like in Org-mode.

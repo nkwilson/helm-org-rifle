@@ -21,7 +21,7 @@ This makes it easy to profile code:
 #+BEGIN_SRC elisp
   (defmacro profile-rifle (times &rest body)
     `(let (output)
-       (dolist (p '("helm-" "org-" "string-" "s-" "buffer-" "append" "delq" "map" "list" "car" "save-" "outline-" "delete-dups" "sort" "line-" "nth" "concat" "char-to-string" "rx-" "goto-" "when" "search-"))
+       (dolist (p '("helm-" "org-" "string-" "s-" "buffer-" "append" "delq" "map" "list" "car" "save-" "outline-" "delete-dups" "sort" "line-" "nth" "concat" "char-to-string" "rx-" "goto-" "when" "search-" "cl-"))
          (elp-instrument-package p))
        (dotimes (x ,times)
          ,@body)
@@ -35,6 +35,9 @@ This makes it easy to profile code:
        (delete-window)
        output))
 #+END_SRC
+
+#+RESULTS:
+: profile-rifle
 
 ** Open Helm session on current org buffers
 
@@ -1164,19 +1167,14 @@ Could be good for testing e.g. negation, to make sure I don't break it.
   (let ((helm-org-rifle-fontify-headings nil))
   (helm-org-rifle-get-candidates-in-buffer (current-buffer) "green"))
   (let ((helm-org-rifle-fontify-headings nil))
-  (better (current-buffer) "green"))
+  (helm-org-rifle-get-candidates-in-buffer (current-buffer) "green"))
 #+END_SRC
 
 #+BEGIN_SRC elisp
     ;;;; Good stuff
   ;; I'll probably use these.
   
-  (defun org-entry-matches-p (pattern)
-    "Return non-nil if the current org-mode entry matches PATTERN."
-    (save-excursion
-      (goto-char (org-entry-beginning-position))
-      (re-search-forward pattern (org-entry-end-position) t)))
-  
+   
   (defun org-entry-re-search-forward (pattern &optional negation)
     "Move point to the beginning of the next entry that matches PATTERN but not NEGATION."
     (outline-next-heading)
@@ -1188,27 +1186,13 @@ Could be good for testing e.g. negation, to make sure I don't break it.
       (unless (outline-next-heading)
         (return))))
   
-  (defmacro helm-org-rifle-accumulate (func &rest args)
-    `(cl-loop for ret = (funcall ,func ,@args)
-              while ret
-              collect ret))
-  
+ 
   (defun org-get-entry-contents (&optional point)
     "Get contents (without heading) of entry (not subtrees) at POINT or current point."
     (when point (goto-char point))
     (forward-line)
     (buffer-substring-no-properties (point) (org-entry-end-position)))
-  
-  (defun org-get-current-entry-pair (&rest args)
-    "Return (CONTENTS . BEGINNING-POINT) for the current entry (NOT the whole subtree)."
-    ;; Probably want to add the heading as a separate item in the return
-    (cons (org-get-entry-contents) (point)))
-  
-  (defun org-get-next-matching-entry-pair (pattern &optional negation)
-    "Return (CONTENTS . BEGINNING-POSITION) for the next entry that matches PATTERN but not NEGATION."
-    (when (org-entry-re-search-forward pattern negation)
-      (org-get-current-entry-pair)))
-  
+    
   (defun org-get-matching-entries (pattern &optional negation)
     "Return list of contents of entries that match PATTERN but not NEGATION."
     (org-with-wide-buffer
@@ -1367,7 +1351,47 @@ i.e (identity (re-search-forward \"foo\" (point-at-eol) t)) => t."
            finally return nil))
 #+END_SRC
 
-*** test
+*** Profiling new code
+
+This /seems/ faster, but let's find out...
+
+**** Without negation
+
+#+NAME: doit
+#+BEGIN_SRC elisp :results value
+  ;;(profile-rifle 1 (helm-org-rifle-get-candidates-in-buffer (find-buffer-visiting "~/org/inbox.org") "emacs helm"))
+  (profile-rifle 10 (helm-org-rifle-get-candidates-in-buffer (current-buffer) "match"))
+;;(length (helm-org-rifle-get-candidates-in-buffer (current-buffer) "match"))
+#+END_SRC
+
+#+CALL: doit[]()
+
+#+RESULTS:
+#+begin_example txt
+helm-org-rifle-get-candidates-in-buffer                       10          0.4995634399  0.049956344
+helm-org-rifle-get-matching-entries                           10          0.497719032   0.0497719032
+helm-org-rifle-get-next-matching-entry                        210         0.4965635440  0.0023645883
+helm-org-rifle-get-current-entry                              200         0.4727874269  0.0023639371
+helm-org-rifle-fontify-like-in-org-mode                       200         0.3310847699  0.0016554238
+helm-org-rifle-re-search-forward-entry                        210         0.0225316920  0.0001072937
+outline-next-heading                                          410         0.0130989569  3.194...e-05
+org-entry-end-position                                        200         0.009317381   4.658...e-05
+mapcar                                                        30          0.008365575   0.0002788525
+org-heading-components                                        200         0.0076309579  3.815...e-05
+outline-back-to-heading                                       400         0.0072118110  1.802...e-05
+org-indent-notify-modified-headline                           400         0.0046759650  1.168...e-05
+org-unfontify-region                                          200         0.002791057   1.395...e-05
+org-do-latex-and-related                                      200         0.0026327840  1.316...e-05
+org-activate-plain-links                                      200         0.0025356819  1.267...e-05
+org-activate-footnote-links                                   200         0.0024931679  1.246...e-05
+rx-form                                                       70          0.0021253580  3.036...e-05
+org-at-heading-p                                              400         0.0021083690  5.270...e-06
+org-string-nw-p                                               200         0.00206824    1.034...e-05
+org-fontify-meta-lines-and-blocks                             200         0.0020561270  1.028...e-05
+#+end_example
+
+Yes, much better.
+
 * Test heading top-level
 
 This file is for testing helm-org-rifle.
