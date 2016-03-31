@@ -186,12 +186,8 @@ saviors of my life.
 So be it, until victory is ours and there is no enemy, but
 peace!"
   (interactive)
-  (let ((helm-candidate-separator " ")
-        ;; (helm-input-idle-delay 2)
-        ;; (helm-idle-delay 2)
-        )
-    (helm :sources (helm-org-rifle-get-sources)
-          :delayed t)))
+  (let ((helm-candidate-separator " "))
+    (helm :sources (helm-org-rifle-get-sources))))
 
 ;;;###autoload
 (defun helm-org-rifle-current-buffer ()
@@ -237,41 +233,34 @@ That is, if its name does not start with a space."
 
 (defun helm-org-rifle-get-source (buffer)
   "Get a rifle buffer for BUFFER."
-  (let* (;; (helm-input-idle-delay 2)
-         ;; (helm-idle-delay 2)
-         (source (helm-build-sync-source (buffer-name buffer)
-                   :candidates (lambda ()
-                                 (when (s-present? helm-pattern)
-                                   (helm-org-rifle-get-candidates-in-buffer (helm-attr 'buffer) helm-pattern)))
-                   :match 'identity
-                   ;; Setting :delayed to a number causes
-                   ;; strange behavior, duplicated results,
-                   ;; causes the :candidates function to be
-                   ;; called nearly once for every character
-                   ;; entered, even though it is delayed for
-                   ;; right amount of time.  But setting it to
-                   ;; t works fine, and...fast...
-                   :delayed t
-                   :multiline t
-                   :volatile t
-                   :action (helm-make-actions
-                            "Show entry" 'helm-org-rifle-show-entry
-                            "Show entry in indirect buffer" 'helm-org-rifle-show-entry-in-indirect-buffer
-                            "Show entry in real buffer" 'helm-org-rifle-show-entry-in-real-buffer)
-                   :keymap helm-org-rifle-map)))
+  (let ((source (helm-build-sync-source (buffer-name buffer)
+                  :candidates (lambda ()
+                                (when (s-present? helm-pattern)
+                                  (helm-org-rifle-get-candidates-in-buffer (helm-attr 'buffer) helm-pattern)))
+                  :match 'identity
+                  ;; Setting :delayed to a number causes
+                  ;; strange behavior, duplicated results,
+                  ;; causes the :candidates function to be
+                  ;; called nearly once for every character
+                  ;; entered, even though it is delayed for
+                  ;; right amount of time.  But setting it to
+                  ;; t works fine, and...fast...
+                  :delayed t
+                  :multiline t
+                  :volatile t
+                  :action (helm-make-actions
+                           "Show entry" 'helm-org-rifle-show-entry
+                           "Show entry in indirect buffer" 'helm-org-rifle-show-entry-in-indirect-buffer
+                           "Show entry in real buffer" 'helm-org-rifle-show-entry-in-real-buffer)
+                  :keymap helm-org-rifle-map)))
     (helm-attrset 'buffer buffer source)
     source))
-
-;; (setq helm-input-idle-delay 0.01
-;;       helm-idle-delay 0.01)
 
 (defun helm-org-rifle-get-sources ()
   "Return list of sources configured for helm-org-rifle.
 One source is returned for each open Org buffer."
-  (let ((helm-input-idle-delay 2)
-        (helm-idle-delay 2))
-    (mapcar 'helm-org-rifle-get-source
-            (-select 'helm-org-rifle-buffer-visible-p (org-buffer-list nil t)))))
+  (mapcar 'helm-org-rifle-get-source
+          (-select 'helm-org-rifle-buffer-visible-p (org-buffer-list nil t))))
 
 (defun helm-org-rifle-prep-token (token)
   "Apply regexp prefix and suffix for TOKEN."
@@ -296,132 +285,134 @@ includes further matching parts separated by newlines.
 
 POSITION is the position in BUFFER where the candidate heading
 begins."
-  (let* ((tokens (split-string input " " t))
+  (let* ((input (split-string input " " t))
          (negations (-keep (lambda (token)
                              (when (string-match "^!" token)
-                               (setq tokens (remove token tokens))
+                               (setq input (remove token input))
                                (s-presence (regexp-quote (s-chop-prefix "!" token)))))
-                           tokens))
-         (all-tokens (append tokens negations))
-         (negations-re (when negations (s-join "\\|" (--map (concat "\\b" it "\\b") negations))))
-         (match-any-tokens-re (mapconcat 'helm-org-rifle-prep-token tokens "\\|"))
-         (context-re (rx-to-string `(and (repeat 0 ,helm-org-rifle-context-characters not-newline)
-                                         (eval (s-join "\\|" tokens))
-                                         (repeat 0 ,helm-org-rifle-context-characters not-newline))))
+                           input))
+         (all-tokens (append input negations))
+         (negations (--map (concat "\\b" it "\\b") negations))
+         (match-all-tokens-re (mapconcat 'helm-org-rifle-prep-token input "\\|"))
          ;; TODO: Turn off case folding if input contains mixed case
          (case-fold-search t)
          results)
     (with-current-buffer buffer
-      (helm-org-rifle-get-matching-entries match-any-tokens-re tokens negations-re))))
+      (save-excursion
+        (goto-char (point-min))
+        (when (org-before-first-heading-p)
+          (outline-next-heading))
+        (while (re-search-forward match-all-tokens-re nil t)
+          ;; Get matching lines in node
+          (catch 'negated
+            (let* ((node-beg (save-excursion
+                               (save-match-data
+                                 (outline-previous-heading))))
+                   (components (org-heading-components))
+                   (path (when helm-org-rifle-show-path
+                           (org-get-outline-path)))
+                   (priority (when (nth 3 components)
+                               ;; TODO: Is there a better way to do this?  The
+                               ;; s-join leaves an extra space when there's no
+                               ;; priority.
+                               (concat "[#" (char-to-string (nth 3 components)) "]")))
+                   (tags (nth 5 components))
+                   (heading (if helm-org-rifle-show-todo-keywords
+                                (s-join " " (list (nth 2 components) priority (nth 4 components)))
+                              (nth 4 components)))
+                   (node-end (save-match-data  ; This is confusing; should these be reversed here?  Does it matter?
+                               (save-excursion
+                                 (outline-next-heading)
+                                 (point))))
+                   (buffer-name (buffer-name buffer))
+                   matching-positions-in-node
+                   matching-lines-in-node
+                   matched-words-with-context)
 
-(defun helm-org-rifle-get-matching-entries (pattern tokens &optional negation)
-  "Return list of contents of entries that match PATTERN and all TOKENS but not NEGATION."
-  (org-with-wide-buffer
-   ;; (outline-next-heading) seems to get stuck, unable to go past
-   ;; invisible (folded) headings, even though its docstring says
-   ;; "move to the next (possibly invisible) heading."  So we have
-   ;; to work around that by widening the buffer first.
-   (goto-char (point-min))
-   (when (org-before-first-heading-p)
-     (outline-next-heading))
-   ;; Surely there's a "real" macro or function to do this, but I
-   ;; can't seem to find it.  -iterate runs a certain number of
-   ;; times, and -unfold changes the seed on each iteration and
-   ;; prepends instead of appends.
-   (helm-org-rifle-accumulate 'helm-org-rifle-get-next-matching-entry pattern tokens negation)))
+              ;; Get list of beginning-of-line positions for
+              ;; lines in node that match any token
+              (setq matching-positions-in-node
+                    (or (cl-loop for token in all-tokens
+                                 do (goto-char node-beg)
+                                 while (search-forward-regexp (helm-org-rifle-prep-token token) node-end t)
+                                 when negations
+                                 when (cl-loop for negation in negations
+                                               thereis (s-matches? negation
+                                                                   (buffer-substring-no-properties (line-beginning-position)
+                                                                                                   (line-end-position))))
+                                 return nil
+                                 collect (line-beginning-position) into result
+                                 do (end-of-line)
+                                 finally return (sort (delete-dups result) '<))
+                        ;; Negation found; skip node
+                        (throw 'negated (goto-char node-end))))
 
-(defmacro helm-org-rifle-accumulate (func &rest args)
-  `(cl-loop for ret = (funcall ,func ,@args)
-            while ret
-            collect ret))
+              ;; Get list of line-strings containing any token
+              (setq matching-lines-in-node
+                    (cl-loop for pos in matching-positions-in-node
+                             do (goto-char pos)
+                             ;; Get text of each matching line
+                             for string = (buffer-substring-no-properties (line-beginning-position)
+                                                                          (line-end-position))
+                             unless (org-at-heading-p) ; Leave headings out of list of matched lines
+                             ;; (DISPLAY . REAL) format for Helm
+                             collect `(,string . (,buffer ,pos))))
 
-(defun helm-org-rifle-get-next-matching-entry (pattern tokens &optional negation)
-  "Return next entry that matches PATTERN and all TOKENS but not NEGATION."
-  (when (helm-org-rifle-re-search-forward-entry pattern tokens negation)
-    (helm-org-rifle-get-current-entry)))
+              ;; Verify all tokens are contained in each matching node
+              (when (cl-loop with targets = (append (-non-nil (list buffer-name
+                                                                    heading
+                                                                    (when helm-org-rifle-show-tags tags)))
+                                                    (mapcar 'car matching-lines-in-node))
+                             for token in input
+                             always (cl-loop for target in targets
+                                             thereis (s-contains? token target t)))
 
-(defun helm-org-rifle-re-search-forward-entry (pattern tokens &optional negation)
-  "Move point to the beginning of the next entry that matches PATTERN and all TOKENS but not NEGATION."
-  (outline-next-heading)
-  ;; (while (re-search-forward pattern nil t)
-  ;;   ;;  (outline-back-to-heading t)
-  ;;   (and (cl-loop for token in tokens
-  ;;                 always (helm-org-rifle-entry-matches-p token))
-  ;;        (not (when negation
-  ;;               (helm-org-rifle-entry-matches-p negation)))))
-  (cl-do (_)
-      ((and (cl-loop for token in tokens
-                     always (helm-org-rifle-entry-matches-p token))
-            (not (when negation
-                   (helm-org-rifle-entry-matches-p negation))))
-       t)
-    (unless (progn
-              (outline-next-heading)
-              (re-search-forward pattern nil t))
-      (return)))
-  )
+                ;; Node matches all tokens
+                (setq matched-words-with-context
+                      (cl-loop for line in (mapcar 'car matching-lines-in-node)
+                               append (cl-loop with end
+                                               for token in input
+                                               for re = (rx-to-string `(and (repeat 0 ,helm-org-rifle-context-characters not-newline)
+                                                                            (eval token)
+                                                                            (repeat 0 ,helm-org-rifle-context-characters not-newline)))
+                                               for match = (string-match re line end)
+                                               if match
+                                               do (setq end (match-end 0))
+                                               and collect (match-string-no-properties 0 line)
+                                               else do (setq end nil))))
 
-(defun helm-org-rifle-entry-matches-p (pattern)
-  "Return non-nil if the current org-mode entry matches PATTERN."
-  ;; For efficiency, this does not save-excursion.  It saves about
-  ;; 0.02 seconds.  Clearly worth the side effects...
-  (goto-char (org-entry-beginning-position))
-  (re-search-forward pattern (org-entry-end-position) t))
-
-(defun helm-org-rifle-get-current-entry (&rest args)
-  "Return (HEADING CONTENTS BEGINNING-POINT) for the current entry (NOT the whole subtree)."
-  ;; Probably want to add the heading as a separate item in the return
-  (let* ((components (org-heading-components))
-         (path (when helm-org-rifle-show-path
-                 (org-get-outline-path)))
-         (priority (when (nth 3 components)
-                     ;; TODO: Is there a better way to do this?  The
-                     ;; s-join leaves an extra space when there's no
-                     ;; priority.
-                     (concat "[#" (char-to-string (nth 3 components)) "]")))
-         (tags (nth 5 components))
-         (heading-string (if helm-org-rifle-show-todo-keywords
-                             (s-join " " (list (nth 2 components) priority (nth 4 components)))
-                           (nth 4 components)))
-         (fontified-heading (if (and helm-org-rifle-show-path
-                                     path)
-                                (if helm-org-rifle-fontify-headings
-                                    (org-format-outline-path (append path
-                                                                     (list heading-string)
+                ;; Return list in format: (string-joining-heading-and-lines-by-newlines node-beg)
+                (push (list (s-join "\n" (list (if (and helm-org-rifle-show-path
+                                                        path)
+                                                   (if helm-org-rifle-fontify-headings
+                                                       (org-format-outline-path (append path
+                                                                                        (list heading)
+                                                                                        (when helm-org-rifle-show-tags
+                                                                                          (concat tags " "))))
+                                                     ;; Not fontifying
+                                                     (s-join "/" (append path
+                                                                         (list heading)
+                                                                         (when helm-org-rifle-show-tags
+                                                                           tags))))
+                                                 ;; No path or not showing path
+                                                 (if helm-org-rifle-fontify-headings
+                                                     (helm-org-rifle-fontify-like-in-org-mode
+                                                      (s-join " " (list (s-repeat (nth 0 components) "*")
+                                                                        heading
+                                                                        (when helm-org-rifle-show-tags
+                                                                          (concat tags " ")))))
+                                                   ;; Not fontifying
+                                                   (s-join " " (list (s-repeat (nth 0 components) "*")
+                                                                     heading
                                                                      (when helm-org-rifle-show-tags
-                                                                       (concat tags " "))))
-                                  ;; Not fontifying
-                                  (s-join "/" (append path
-                                                      (list heading-string)
-                                                      (when helm-org-rifle-show-tags
-                                                        tags))))
-                              ;; No path or not showing path
-                              (if helm-org-rifle-fontify-headings
-                                  (helm-org-rifle-fontify-like-in-org-mode
-                                   (s-join " " (list (s-repeat (nth 0 components) "*")
-                                                     heading-string
-                                                     (when helm-org-rifle-show-tags
-                                                       (concat tags " ")))))
-                                ;; Not fontifying
-                                (s-join " " (list (s-repeat (nth 0 components) "*")
-                                                  heading-string
-                                                  (when helm-org-rifle-show-tags
-                                                    tags))))))
-         (matches-with-context (cl-loop with end = (org-entry-end-position)
-                                        while (re-search-forward context-re end t)
-                                        do (setq end (match-end 0))
-                                        collect (match-string-no-properties 0))))
-    ;; Return list
-    (list fontified-heading matches-with-context (point))))
-
-
-
-
-
-
-
-
-
+                                                                       tags)))))
+                                               (s-join "..." matched-words-with-context)))
+                            node-beg)
+                      results))
+              ;; Go to end of node
+              (goto-char node-end))))))
+    ;; Return results
+    results))
 
 (defun helm-org-rifle-fontify-like-in-org-mode (s &optional odd-levels)
   "Fontify string S like in Org-mode.
