@@ -186,8 +186,11 @@ saviors of my life.
 So be it, until victory is ours and there is no enemy, but
 peace!"
   (interactive)
-  (let ((helm-candidate-separator " "))
-    (helm :sources (helm-org-rifle-get-sources))))
+  (let ((helm-candidate-separator " ")
+        (helm-input-idle-delay 2)
+        (helm-idle-delay 2))
+    (helm :sources (helm-org-rifle-get-sources)
+          :delayed 2)))
 
 ;;;###autoload
 (defun helm-org-rifle-current-buffer ()
@@ -233,33 +236,44 @@ That is, if its name does not start with a space."
 
 (defun helm-org-rifle-get-source (buffer)
   "Get a rifle buffer for BUFFER."
-  (let ((source (helm-build-sync-source (buffer-name buffer)
-                  :candidates (lambda ()
-                                (when (s-present? helm-pattern)
-                                  (helm-org-rifle-get-candidates-in-buffer (helm-attr 'buffer) helm-pattern)))
-                  :match 'identity
-                  ;; Setting :delayed to a number causes
-                  ;; strange behavior, duplicated results,
-                  ;; causes the :candidates function to be
-                  ;; called nearly once for every character
-                  ;; entered, even though it is delayed for
-                  ;; right amount of time.  But setting it to
-                  ;; t works fine, and...fast...
-                  :multiline t
-                  :volatile t
-                  :action (helm-make-actions
-                           "Show entry" 'helm-org-rifle-show-entry
-                           "Show entry in indirect buffer" 'helm-org-rifle-show-entry-in-indirect-buffer
-                           "Show entry in real buffer" 'helm-org-rifle-show-entry-in-real-buffer)
-                  :keymap helm-org-rifle-map)))
+  (let* (;; (helm-input-idle-delay 2)
+         ;; (helm-idle-delay 2)
+         (source (helm-build-sync-source (buffer-name buffer)
+                   :init (lambda ()
+                           (message "Source init: %s" (helm-attr 'buffer)))
+                   :candidates (lambda ()
+                                 (when (s-present? helm-pattern)
+                                   (message "CALLED %s: %s" (helm-attr 'buffer) (float-time))
+                                   (helm-org-rifle-get-candidates-in-buffer (helm-attr 'buffer) helm-pattern)))
+                   :match 'identity
+                   ;; Setting :delayed to a number causes
+                   ;; strange behavior, duplicated results,
+                   ;; causes the :candidates function to be
+                   ;; called nearly once for every character
+                   ;; entered, even though it is delayed for
+                   ;; right amount of time.  But setting it to
+                   ;; t works fine, and...fast...
+                   :delayed 2
+                   :multiline t
+                   :volatile t
+                   :action (helm-make-actions
+                            "Show entry" 'helm-org-rifle-show-entry
+                            "Show entry in indirect buffer" 'helm-org-rifle-show-entry-in-indirect-buffer
+                            "Show entry in real buffer" 'helm-org-rifle-show-entry-in-real-buffer)
+                   :keymap helm-org-rifle-map)))
     (helm-attrset 'buffer buffer source)
     source))
+
+;; (setq helm-input-idle-delay 0.01
+;;       helm-idle-delay 0.01)
 
 (defun helm-org-rifle-get-sources ()
   "Return list of sources configured for helm-org-rifle.
 One source is returned for each open Org buffer."
-  (mapcar 'helm-org-rifle-get-source
-          (-select 'helm-org-rifle-buffer-visible-p (org-buffer-list nil t))))
+  (let ((helm-input-idle-delay 2)
+        (helm-idle-delay 2))
+    (mapcar 'helm-org-rifle-get-source
+            (-select 'helm-org-rifle-buffer-visible-p (org-buffer-list nil t)))))
 
 (defun helm-org-rifle-prep-token (token)
   "Apply regexp prefix and suffix for TOKEN."
@@ -472,15 +486,16 @@ created."
              for contents = (car candidate)
              for pos = (cdr candidate)
              for end = nil
-             collect (cons (cl-loop
-                            for re in regexps
-                            for match = (string-match re contents end)
-                            if match
-                            do (setq end (match-end 0))
-                            and collect (match-string 0 contents) into strings
-                            else do (setq end nil)
-                            finally return (s-join "..." strings))
-                           pos))))
+             do (message "CANDIDATE: %s" candidate)
+             and collect (cons (cl-loop
+                                for re in regexps
+                                for match = (string-match re contents end)
+                                if match
+                                do (setq end (match-end 0))
+                                and collect (match-string 0 contents) into strings
+                                else do (setq end nil)
+                                finally return (s-join "..." strings))
+                               pos))))
 
 (defun helm-org-rifle-filtered-candidate-transformer (candidate c)
   (message "%s %s" candidate c))

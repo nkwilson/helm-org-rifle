@@ -1134,28 +1134,29 @@ Could be good for testing e.g. negation, to make sure I don't break it.
 ** TODO Search files
 
 #+BEGIN_SRC elisp
-  (let ((helm-candidate-separator " "))(helm :sources (helm-build-in-file-source "test" "~/src/helm-org-rifle/test.org"
-                                            :search 'org-entry-re-search-forward
-:get-line 'helm-org-rifle-get-entry
-:init (lambda () (when (org-before-first-heading-p)
-(outline-next-heading)))
-:filtered-candidate-transformer 'helm-org-rifle-filtered-candidate-transformer
-                                            :match 'identity
-:requires-pattern t
-                                            ;; Setting :delayed to a number causes
-                                            ;; strange behavior, duplicated results,
-                                            ;; causes the :candidates function to be
-                                            ;; called nearly once for every character
-                                            ;; entered, even though it is delayed for
-                                            ;; right amount of time.  But setting it to
-                                            ;; t works fine, and...fast...
-                                            :multiline t
-                                            :volatile t
-                                            :action (helm-make-actions
-                                                     "Show entry" 'helm-org-rifle-show-entry
-                                                     "Show entry in indirect buffer" 'helm-org-rifle-show-entry-in-indirect-buffer
-                                                     "Show entry in real buffer" 'helm-org-rifle-show-entry-in-real-buffer)
-                                            :keymap helm-org-rifle-map)))
+  (let ((helm-candidate-separator " "))
+    (helm :sources (helm-build-in-file-source "test" "~/src/helm-org-rifle/test.org"
+                                              :search 'org-entry-re-search-forward
+                                              :get-line 'helm-org-rifle-get-entry
+                                              :init (lambda () (when (org-before-first-heading-p)
+                                                                 (outline-next-heading)))
+                                              :filtered-candidate-transformer 'helm-org-rifle-filtered-candidate-transformer
+                                              :match 'identity
+                                              :requires-pattern t
+                                              ;; Setting :delayed to a number causes
+                                              ;; strange behavior, duplicated results,
+                                              ;; causes the :candidates function to be
+                                              ;; called nearly once for every character
+                                              ;; entered, even though it is delayed for
+                                              ;; right amount of time.  But setting it to
+                                              ;; t works fine, and...fast...
+                                              :multiline t
+                                              :volatile t
+                                              :action (helm-make-actions
+                                                       "Show entry" 'helm-org-rifle-show-entry
+                                                       "Show entry in indirect buffer" 'helm-org-rifle-show-entry-in-indirect-buffer
+                                                       "Show entry in real buffer" 'helm-org-rifle-show-entry-in-real-buffer)
+                                              :keymap helm-org-rifle-map)))
 #+END_SRC
 
 #+BEGIN_SRC elisp
