@@ -1160,7 +1160,13 @@ Could be good for testing e.g. negation, to make sure I don't break it.
 #+END_SRC
 
 #+BEGIN_SRC elisp
-  ;;;; Good stuff
+(helm-org-rifle-get-candidates-in-buffer (current-buffer) "john")
+(let ((helm-org-rifle-fontify-headings nil))
+(helm-org-rifle-get-candidates-in-buffer (current-buffer) "green"))
+#+END_SRC
+
+#+BEGIN_SRC elisp
+    ;;;; Good stuff
   ;; I'll probably use these.
   
   (defun org-entry-matches-p (pattern)
@@ -1184,8 +1190,10 @@ Could be good for testing e.g. negation, to make sure I don't break it.
               collect ret))
   
   (defun org-get-entry-contents (&optional point)
-    "Get contents of entry (not subtrees) at POINT or current point."
-    (buffer-substring-no-properties (org-entry-beginning-position) (org-entry-end-position)))
+    "Get contents (without heading) of entry (not subtrees) at POINT or current point."
+    (when point (goto-char point))
+    (forward-line)
+    (buffer-substring-no-properties (point) (org-entry-end-position)))
   
   (defun org-get-current-entry-pair (&rest args)
     "Return (CONTENTS . BEGINNING-POINT) for the current entry (NOT the whole subtree)."
@@ -1213,31 +1221,89 @@ Could be good for testing e.g. negation, to make sure I don't break it.
      ;; prepends instead of appends.
      (helm-org-rifle-accumulate 'org-get-next-matching-entry-pair pattern)))
   
-  ;;;; Others
+    ;;;; Others
   ;; Not sure if I need these, but they might be useful.
   
   (defun org-entry-get-next-matching-entry-contents (pattern)
     "Return contents of next entry that matches PATTERN."
     (when (org-entry-re-search-forward pattern)
-      (org-get-entry-contents))
-    
-    (defun org-entry-get-next-matching-entry-point (pattern)
-      "Return starting point of next entry that matches PATTERN."
-      (when (org-entry-re-search-forward pattern)
-        (org-entry-beginning-position)))
-    
-    
-    
+      (org-get-entry-contents)))
   
-    
-    
-    
-    
-    
-    (org-entry-re-search-forward "blueberry")
-    (org-get-matching-entries "blueberry")
-    
-    
+  (defun org-entry-get-next-matching-entry-point (pattern)
+    "Return starting point of next entry that matches PATTERN."
+    (when (org-entry-re-search-forward pattern)
+      (org-entry-beginning-position)))
+  
+#+END_SRC
+
+#+RESULTS:
+: org-entry-get-next-matching-entry-point
+
+More stuff:
+
+#+BEGIN_SRC elisp
+(defmacro --when-let (func &body)
+  (let (it)
+    (setq it (funcall ,func))
+    (when it
+      ,@body)))
+
+(--when-let "yes"
+  (message it))
+
+(defmacro* let-while ((var expression) &rest body)
+  ;; https://github.com/magnars/dash.el/issues/32
+  (let ((expression-fn (make-symbol "expression-fn")))
+    `(let ((,expression-fn (lambda () ,expression)))
+       (while (let ((,var (funcall ,expression-fn)))
+                ,@body
+                ,var)))))
+
+(let-while (res (float-time))
+           (sleep-for 1)
+           (message "%s" res))
+
+(defun helm-org-rifle-filtered-candidate-transformer (candidates &rest source)
+  (when candidates
+    (cl-loop with end
+             with tokens = (s-split-words helm-pattern)
+             with regexps = (cl-loop for token in tokens
+                                     collect (rx-to-string `(and (repeat 0 ,helm-org-rifle-context-characters not-newline)
+                                                                 (eval token)
+                                                                 (repeat 0 ,helm-org-rifle-context-characters not-newline))))
+             for candidate in candidates
+             for contents = (car candidate)
+             for pos = (cdr candidate)
+             for end = nil
+             do (message "CANDIDATE: %s" candidate)
+             and collect (cons (cl-loop
+                                for re in regexps
+                                for match = (string-match re contents end)
+                                if match
+                                do (setq end (match-end 0))
+                                and collect (match-string 0 contents) into strings
+                                else do (setq end nil)
+                                finally return (s-join "..." strings))
+                               pos))))
+
+(defun helm-org-rifle-filtered-candidate-transformer (candidate c)
+  (message "%s %s" candidate c))
+(let ((helm-pattern "blah blah blah"))
+  (helm-org-rifle-filtered-candidate-transformer "okay blah okay" 12))
+
+(defun helm-org-rifle-filtered-candidate-transformer (contents pos)
+  (let* ((matching-strings (cl-loop with end
+                                    for token in (s-split-words helm-pattern)
+                                    for re = (rx-to-string `(and (repeat 0 ,helm-org-rifle-context-characters not-newline)
+                                                                 (eval token)
+                                                                 (repeat 0 ,helm-org-rifle-context-characters not-newline)))
+                                    for match = (string-match re contents end)
+                                    if match
+                                    do (setq end (match-end 0))
+                                    and collect match
+                                    else do (setq end nil))))
+    (cons (s-join "..." matching-strings) pos)))
+
 #+END_SRC
 
 These macros might be useful:
