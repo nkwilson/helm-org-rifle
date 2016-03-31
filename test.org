@@ -1160,9 +1160,11 @@ Could be good for testing e.g. negation, to make sure I don't break it.
 #+END_SRC
 
 #+BEGIN_SRC elisp
-(helm-org-rifle-get-candidates-in-buffer (current-buffer) "john")
-(let ((helm-org-rifle-fontify-headings nil))
-(helm-org-rifle-get-candidates-in-buffer (current-buffer) "green"))
+  (helm-org-rifle-get-candidates-in-buffer (current-buffer) "john")
+  (let ((helm-org-rifle-fontify-headings nil))
+  (helm-org-rifle-get-candidates-in-buffer (current-buffer) "green"))
+  (let ((helm-org-rifle-fontify-headings nil))
+  (better (current-buffer) "green"))
 #+END_SRC
 
 #+BEGIN_SRC elisp
@@ -1175,11 +1177,13 @@ Could be good for testing e.g. negation, to make sure I don't break it.
       (goto-char (org-entry-beginning-position))
       (re-search-forward pattern (org-entry-end-position) t)))
   
-  (defun org-entry-re-search-forward (pattern)
-    "Move point to the beginning of the next entry that matches PATTERN."
+  (defun org-entry-re-search-forward (pattern &optional negation)
+    "Move point to the beginning of the next entry that matches PATTERN but not NEGATION."
     (outline-next-heading)
     (cl-do (_)
-        ((org-entry-matches-p pattern)
+        ((and (org-entry-matches-p pattern)
+              (not (when negation
+                     (org-entry-matches-p negation))))
          t)
       (unless (outline-next-heading)
         (return))))
@@ -1200,13 +1204,13 @@ Could be good for testing e.g. negation, to make sure I don't break it.
     ;; Probably want to add the heading as a separate item in the return
     (cons (org-get-entry-contents) (point)))
   
-  (defun org-get-next-matching-entry-pair (pattern)
-    "Return (CONTENTS . BEGINNING-POSITION) for the next entry that matches PATTERN."
-    (when (org-entry-re-search-forward pattern)
+  (defun org-get-next-matching-entry-pair (pattern &optional negation)
+    "Return (CONTENTS . BEGINNING-POSITION) for the next entry that matches PATTERN but not NEGATION."
+    (when (org-entry-re-search-forward pattern negation)
       (org-get-current-entry-pair)))
   
-  (defun org-get-matching-entries (pattern)
-    "Return list of contents of entries that match PATTERN."
+  (defun org-get-matching-entries (pattern &optional negation)
+    "Return list of contents of entries that match PATTERN but not NEGATION."
     (org-with-wide-buffer
      ;; (outline-next-heading) seems to get stuck, unable to go past
      ;; invisible (folded) headings, even though its docstring says
@@ -1219,7 +1223,7 @@ Could be good for testing e.g. negation, to make sure I don't break it.
      ;; can't seem to find it.  -iterate runs a certain number of
      ;; times, and -unfold changes the seed on each iteration and
      ;; prepends instead of appends.
-     (helm-org-rifle-accumulate 'org-get-next-matching-entry-pair pattern)))
+     (helm-org-rifle-accumulate 'org-get-next-matching-entry-pair pattern negation)))
   
     ;;;; Others
   ;; Not sure if I need these, but they might be useful.

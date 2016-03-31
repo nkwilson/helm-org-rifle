@@ -287,7 +287,9 @@ One source is returned for each open Org buffer."
             (regexp-quote token)
             helm-org-rifle-re-end-part)))
 
-(defun helm-org-rifle-get-candidates-in-buffer (buffer input)
+
+
+(defun better (buffer input)
   "Return candidates in BUFFER for INPUT.
 
 INPUT is a string.  Candidates are returned in this
@@ -305,7 +307,7 @@ begins."
                                (s-presence (regexp-quote (s-chop-prefix "!" token)))))
                            input))
          (all-tokens (append input negations))
-         (negations (--map (concat "\\b" it "\\b") negations))
+         (negations-re (when negations (s-join "\\|" (--map (concat "\\b" it "\\b") negations))))
          (match-all-tokens-re (mapconcat 'helm-org-rifle-prep-token input "\\|"))
          (context-re (rx-to-string `(and (repeat 0 ,helm-org-rifle-context-characters not-newline)
                                          (eval (s-join "\\|" input))
@@ -314,75 +316,7 @@ begins."
          (case-fold-search t)
          results)
     (with-current-buffer buffer
-      (save-excursion
-        (goto-char (point-min))
-        (when (org-before-first-heading-p)
-          (outline-next-heading))
-        ;; Check each entry
-        (while (org-entry-re-search-forward match-all-tokens-re)
-          (when (cl-loop for token in input
-                         always (org-entry-matches-p token)
-                         never (when negations
-                                 (cl-loop for negation in negations
-                                          never (org-entry-matches-p negation)))
-                         ;; when negations
-                         ;; for negation in negations
-                         ;; never (org-entry-matches-p negation)
-                         )
-
-            ;; Entry matches and is not negated
-            (let* ((components (org-heading-components))
-                   (path (when helm-org-rifle-show-path
-                           (org-get-outline-path)))
-                   (priority (when (nth 3 components)
-                               ;; TODO: Is there a better way to do this?  The
-                               ;; s-join leaves an extra space when there's no
-                               ;; priority.
-                               (concat "[#" (char-to-string (nth 3 components)) "]")))
-                   (tags (nth 5 components))
-                   (heading-string (if helm-org-rifle-show-todo-keywords
-                                       (s-join " " (list (nth 2 components) priority (nth 4 components)))
-                                     (nth 4 components)))
-                   (matches-with-context (cl-loop for end = (org-entry-end-position)
-                                                  while (re-search-forward context-re end t)
-                                                  do (setq end (match-end 0))
-                                                  collect (match-string-no-properties 0)
-
-                                                  ;; (buffer-substring-no-properties (line-beginning-position) ;
-                                                  ;;                                 (line-end-position))
-                                                  ;;  (match-string-no-properties 0)
-                                                  ;;  for match = (string-match re line end)
-                                                  )))
-              (push (list (s-join "\n"
-                                  (list (if (and helm-org-rifle-show-path
-                                                 path)
-                                            (if helm-org-rifle-fontify-headings
-                                                (org-format-outline-path (append path
-                                                                                 (list heading-string)
-                                                                                 (when helm-org-rifle-show-tags
-                                                                                   (concat tags " "))))
-                                              ;; Not fontifying
-                                              (s-join "/" (append path
-                                                                  (list heading-string)
-                                                                  (when helm-org-rifle-show-tags
-                                                                    tags))))
-                                          ;; No path or not showing path
-                                          (if helm-org-rifle-fontify-headings
-                                              (helm-org-rifle-fontify-like-in-org-mode
-                                               (s-join " " (list (s-repeat (nth 0 components) "*")
-                                                                 heading-string
-                                                                 (when helm-org-rifle-show-tags
-                                                                   (concat tags " ")))))
-                                            ;; Not fontifying
-                                            (s-join " " (list (s-repeat (nth 0 components) "*")
-                                                              heading-string
-                                                              (when helm-org-rifle-show-tags
-                                                                tags)))))
-                                        (s-join "..." matches-with-context)))
-                          (org-entry-beginning-position))
-                    results))))))
-    ;; Return results
-    results))
+      (org-get-matching-entries match-all-tokens-re negations-re))))
 
 (defun helm-org-rifle-fontify-like-in-org-mode (s &optional odd-levels)
   "Fontify string S like in Org-mode.
