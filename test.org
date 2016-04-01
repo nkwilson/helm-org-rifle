@@ -1147,6 +1147,7 @@ Could be good for testing e.g. negation, to make sure I don't break it.
 
 ** TODO More idiomatic Helm usage
 
+*** Code
 #+BEGIN_SRC elisp
   (let ((helm-candidate-separator " "))
     (helm :sources (helm-build-in-file-source "test" "~/src/helm-org-rifle/test.org"
@@ -1813,6 +1814,9 @@ mapcar                                                        35          0.0272
 org-indent-notify-modified-headline                           1510        0.0234859020  1.555...e-05
 org-get-limited-outline-regexp                                3020        0.0206098460  6.824...e-06
 
+*** Fixing new code
+
+[2016-03-31 Thu 01:07] Well, the new code works and is a tiny bit faster!  Except for when it goes into an infinite loop.  It doesn't happen every time though; it depends on the query and the file that's being searched.  Right now it happens when I search =main.org= and =inbox.org= for =emacs=.  Probably something to do with not advancing to the next heading properly, or not saving the search position correctly.  Maybe that little optimization I did isn't worth it...well, that one doesn't seem to matter.  Anyway I'll have to step through it...
 
 
 

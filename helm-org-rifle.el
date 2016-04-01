@@ -407,6 +407,14 @@ begins."
                                                   heading-string
                                                   (when helm-org-rifle-show-tags
                                                     tags))))))
+
+         ;; BUG: I think this is where the bug is, or at least one is.
+         ;; end gets changed, so it will never search past the first
+         ;; match.  I forget why I was setting end in the earlier
+         ;; version...ah I think it's because in that version I was
+         ;; searching a list of strings, but now I'm searching through
+         ;; the buffer up to the entry's end position, so it shouldn't
+         ;; be necessary to change end anymore.
          (matches-with-context (cl-loop with end = (org-entry-end-position)
                                         while (re-search-forward context-re end t)
                                         do (setq end (match-end 0))
