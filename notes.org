@@ -1064,23 +1064,29 @@ And maybe that is the problem right there: matching tags would seem to /require/
 Just for fun, macro-style:
 
 #+BEGIN_SRC elisp
-  (defmacro test-regexps (targets-tokens regexps)
-"Where TARGETS-TOKENS is a list of lists, each being (TARGET EXPECTED-NIL-OR-T &rest TOKENS),
-and REGEXPS is a list of lists, each being (DESCRIPTION PREFIX SUFFIX)."
-    `(append '(("Num" "Expect" "Result" "Token" "Target"))
+  (defmacro test-regexps (targets-tokens regexps &optional show-regexps)
+    "Where TARGETS-TOKENS is a list of lists, each being (TARGET EXPECTED-NIL-OR-T &rest TOKENS),
+  and REGEXPS is a list of lists, each being (DESCRIPTION PREFIX SUFFIX). 
+  When SHOW-REGEXPS is non-nil, display the PREFIX and SUFFIX."
+    `(append '(("Num" "Expect" "Result" "Token" "Target" ,(if show-regexps '("Prefix" "Suffix") "")))
              (cl-loop for rel in ,regexps
                       for prefix = (nth 1 rel)
                       for suffix = (nth 2 rel)
                       append (cl-loop for set in ,targets-tokens
                                       append (cl-loop for token in (cddr set)
                                                       for target = (car set)
-                                                      for expect = (cadr set) collect
-                                                      (list (car rel)
-                                                            (format "%s" expect)
-                                                            (if (string-match (concat prefix token suffix) target)
-                                                                t nil)
-                                                            (format "%s" token)
-                                                            (format "%s" target)))))))
+                                                      for expect = (cadr set)
+                                                      collect (list (car rel)
+                                                                    (format "%s" expect)
+                                                                    (if (string-match (concat prefix token suffix) target)
+                                                                        t nil)
+                                                                    (format "%s" token)
+                                                                    (format "%s" target)
+                                                                    (if ,show-regexps
+                                                                        (progn
+                                                                          (format "%s" (s-trim (s-replace "|" "-OR-" (regexp-quote prefix))))
+                                                                          (format "%s" (s-trim (s-replace "|" "-OR-" (regexp-quote suffix)))))
+                                                                      "")))))))
   
   (test-regexps '(("videos" nil "eos")
                   ("symbol-name" t "name")
@@ -1114,70 +1120,70 @@ and REGEXPS is a list of lists, each being (DESCRIPTION PREFIX SUFFIX)."
                     "\\(\\b\\|\\_>\\|[[:punct:]]\\)")))
 #+END_SRC
 #+RESULTS:
-| Num | Expect | Result | Token   | Target                             |
-|   1 | nil    | t      | eos     | videos                             |
-|   1 | t      | t      | name    | symbol-name                        |
-|   1 | t      | t      | quoted  | something 'quoted-symbol something |
-|   1 | t      | t      | symbol  | something 'quoted-symbol something |
-|   1 | t      | t      | :two:   | one :two:three:four: five          |
-|   1 | t      | t      | :three: | one :two:three:four: five          |
-|   1 | t      | t      | one     | one :two:three:four: five          |
-|   1 | t      | t      | one     | one :two: three                    |
-|   1 | t      | t      | :two:   | one :two: three                    |
-|   2 | nil    | nil    | eos     | videos                             |
-|   2 | t      | t      | name    | symbol-name                        |
-|   2 | t      | nil    | quoted  | something 'quoted-symbol something |
-|   2 | t      | t      | symbol  | something 'quoted-symbol something |
-|   2 | t      | nil    | :two:   | one :two:three:four: five          |
-|   2 | t      | nil    | :three: | one :two:three:four: five          |
-|   2 | t      | t      | one     | one :two:three:four: five          |
-|   2 | t      | t      | one     | one :two: three                    |
-|   2 | t      | nil    | :two:   | one :two: three                    |
-|   3 | nil    | t      | eos     | videos                             |
-|   3 | t      | t      | name    | symbol-name                        |
-|   3 | t      | t      | quoted  | something 'quoted-symbol something |
-|   3 | t      | t      | symbol  | something 'quoted-symbol something |
-|   3 | t      | t      | :two:   | one :two:three:four: five          |
-|   3 | t      | t      | :three: | one :two:three:four: five          |
-|   3 | t      | t      | one     | one :two:three:four: five          |
-|   3 | t      | t      | one     | one :two: three                    |
-|   3 | t      | t      | :two:   | one :two: three                    |
-|   4 | nil    | nil    | eos     | videos                             |
-|   4 | t      | nil    | name    | symbol-name                        |
-|   4 | t      | t      | quoted  | something 'quoted-symbol something |
-|   4 | t      | nil    | symbol  | something 'quoted-symbol something |
-|   4 | t      | nil    | :two:   | one :two:three:four: five          |
-|   4 | t      | nil    | :three: | one :two:three:four: five          |
-|   4 | t      | nil    | one     | one :two:three:four: five          |
-|   4 | t      | nil    | one     | one :two: three                    |
-|   4 | t      | nil    | :two:   | one :two: three                    |
-|   5 | nil    | nil    | eos     | videos                             |
-|   5 | t      | t      | name    | symbol-name                        |
-|   5 | t      | nil    | quoted  | something 'quoted-symbol something |
-|   5 | t      | t      | symbol  | something 'quoted-symbol something |
-|   5 | t      | nil    | :two:   | one :two:three:four: five          |
-|   5 | t      | t      | :three: | one :two:three:four: five          |
-|   5 | t      | t      | one     | one :two:three:four: five          |
-|   5 | t      | t      | one     | one :two: three                    |
-|   5 | t      | nil    | :two:   | one :two: three                    |
-|   6 | nil    | nil    | eos     | videos                             |
-|   6 | t      | t      | name    | symbol-name                        |
-|   6 | t      | nil    | quoted  | something 'quoted-symbol something |
-|   6 | t      | t      | symbol  | something 'quoted-symbol something |
-|   6 | t      | nil    | :two:   | one :two:three:four: five          |
-|   6 | t      | t      | :three: | one :two:three:four: five          |
-|   6 | t      | t      | one     | one :two:three:four: five          |
-|   6 | t      | t      | one     | one :two: three                    |
-|   6 | t      | nil    | :two:   | one :two: three                    |
-|   7 | nil    | nil    | eos     | videos                             |
-|   7 | t      | t      | name    | symbol-name                        |
-|   7 | t      | t      | quoted  | something 'quoted-symbol something |
-|   7 | t      | t      | symbol  | something 'quoted-symbol something |
-|   7 | t      | nil    | :two:   | one :two:three:four: five          |
-|   7 | t      | t      | :three: | one :two:three:four: five          |
-|   7 | t      | t      | one     | one :two:three:four: five          |
-|   7 | t      | t      | one     | one :two: three                    |
-|   7 | t      | nil    | :two:   | one :two: three                    |
+| Num | Expect | Result | Token   | Target                             |   |
+|   1 | nil    | t      | eos     | videos                             |   |
+|   1 | t      | t      | name    | symbol-name                        |   |
+|   1 | t      | t      | quoted  | something 'quoted-symbol something |   |
+|   1 | t      | t      | symbol  | something 'quoted-symbol something |   |
+|   1 | t      | t      | :two:   | one :two:three:four: five          |   |
+|   1 | t      | t      | :three: | one :two:three:four: five          |   |
+|   1 | t      | t      | one     | one :two:three:four: five          |   |
+|   1 | t      | t      | one     | one :two: three                    |   |
+|   1 | t      | t      | :two:   | one :two: three                    |   |
+|   2 | nil    | nil    | eos     | videos                             |   |
+|   2 | t      | t      | name    | symbol-name                        |   |
+|   2 | t      | nil    | quoted  | something 'quoted-symbol something |   |
+|   2 | t      | t      | symbol  | something 'quoted-symbol something |   |
+|   2 | t      | nil    | :two:   | one :two:three:four: five          |   |
+|   2 | t      | nil    | :three: | one :two:three:four: five          |   |
+|   2 | t      | t      | one     | one :two:three:four: five          |   |
+|   2 | t      | t      | one     | one :two: three                    |   |
+|   2 | t      | nil    | :two:   | one :two: three                    |   |
+|   3 | nil    | t      | eos     | videos                             |   |
+|   3 | t      | t      | name    | symbol-name                        |   |
+|   3 | t      | t      | quoted  | something 'quoted-symbol something |   |
+|   3 | t      | t      | symbol  | something 'quoted-symbol something |   |
+|   3 | t      | t      | :two:   | one :two:three:four: five          |   |
+|   3 | t      | t      | :three: | one :two:three:four: five          |   |
+|   3 | t      | t      | one     | one :two:three:four: five          |   |
+|   3 | t      | t      | one     | one :two: three                    |   |
+|   3 | t      | t      | :two:   | one :two: three                    |   |
+|   4 | nil    | nil    | eos     | videos                             |   |
+|   4 | t      | nil    | name    | symbol-name                        |   |
+|   4 | t      | t      | quoted  | something 'quoted-symbol something |   |
+|   4 | t      | nil    | symbol  | something 'quoted-symbol something |   |
+|   4 | t      | nil    | :two:   | one :two:three:four: five          |   |
+|   4 | t      | nil    | :three: | one :two:three:four: five          |   |
+|   4 | t      | nil    | one     | one :two:three:four: five          |   |
+|   4 | t      | nil    | one     | one :two: three                    |   |
+|   4 | t      | nil    | :two:   | one :two: three                    |   |
+|   5 | nil    | nil    | eos     | videos                             |   |
+|   5 | t      | t      | name    | symbol-name                        |   |
+|   5 | t      | nil    | quoted  | something 'quoted-symbol something |   |
+|   5 | t      | t      | symbol  | something 'quoted-symbol something |   |
+|   5 | t      | nil    | :two:   | one :two:three:four: five          |   |
+|   5 | t      | t      | :three: | one :two:three:four: five          |   |
+|   5 | t      | t      | one     | one :two:three:four: five          |   |
+|   5 | t      | t      | one     | one :two: three                    |   |
+|   5 | t      | nil    | :two:   | one :two: three                    |   |
+|   6 | nil    | nil    | eos     | videos                             |   |
+|   6 | t      | t      | name    | symbol-name                        |   |
+|   6 | t      | nil    | quoted  | something 'quoted-symbol something |   |
+|   6 | t      | t      | symbol  | something 'quoted-symbol something |   |
+|   6 | t      | nil    | :two:   | one :two:three:four: five          |   |
+|   6 | t      | t      | :three: | one :two:three:four: five          |   |
+|   6 | t      | t      | one     | one :two:three:four: five          |   |
+|   6 | t      | t      | one     | one :two: three                    |   |
+|   6 | t      | nil    | :two:   | one :two: three                    |   |
+|   7 | nil    | nil    | eos     | videos                             |   |
+|   7 | t      | t      | name    | symbol-name                        |   |
+|   7 | t      | t      | quoted  | something 'quoted-symbol something |   |
+|   7 | t      | t      | symbol  | something 'quoted-symbol something |   |
+|   7 | t      | nil    | :two:   | one :two:three:four: five          |   |
+|   7 | t      | t      | :three: | one :two:three:four: five          |   |
+|   7 | t      | t      | one     | one :two:three:four: five          |   |
+|   7 | t      | t      | one     | one :two: three                    |   |
+|   7 | t      | nil    | :two:   | one :two: three                    |   |
 
 
 ** MAYBE Use grep to find matching lines
