@@ -930,7 +930,7 @@ And maybe that is the problem right there: matching tags would seem to /require/
                      for suffix = (nth 2 rel)
                      append
                      (cl-loop for set in targets-tokens
-                              
+  
                               append
                               (cl-loop for token in (cddr set)
                                        for target = (car set)
@@ -948,16 +948,19 @@ And maybe that is the problem right there: matching tags would seem to /require/
                                               (format "%s" (s-trim (s-replace "|" "-OR-" (regexp-quote prefix))))
                                               (format "%s" (s-trim (s-replace "|" "-OR-" (regexp-quote suffix)))))
                                           ""))) )
-and append '(("" "" "" "" "")))))
+                     and append '(("" "" "" "" "")))))
   
   (test-regexps '(("videos" nil "eos")
+                  ("soliloquy" nil "sol")
+                  ("keyboard" nil "boa")
                   ("symbol-name" t "name")
-                  ("something 'quoted-symbol something" t "quoted" "symbol")
-                  ("one :two:three:four: five" t ":two:" ":three:" "one")
-                  ("one :two: three" t "one" ":two:")
+                  ("something 'quoted-symbol something" t "quoted" "symbol" "quoted-symbol" "'quoted-symbol")
+                  ("one :two:three:four: five" t "one" ":two:" ":three:" ":four:" "five" ":two:three:" ":three:four:" ":two:three:four:")
   
                   ;; this regexp is from org.el
-                  ("one :two:three:four: five" t ":two:" ":three:" "one" "[ \t]:\\([[:alnum:]_@#%:]+\\):[ \t\r\n]"))
+                  ;;("one :two:three:four: five" t ":two:" ":three:" "one" "[ \t]:\\([[:alnum:]_@#%:]+\\):[ \t\r\n]")
+                  )
+  
                 `( ("1"
                     ,(rx (or bow (any punct)))
                     ,(rx (or eow (any punct))))
@@ -991,161 +994,194 @@ and append '(("" "" "" "" "")))))
                    ))
 #+END_SRC
 #+RESULTS:
-|           Num | Expect | Result | Target                             | Token                                 |   |
-|             1 | nil    | t      | videos                             | eos                                   |   |
-|             1 | t      | t      | symbol-name                        | name                                  |   |
-|             1 | t      | t      | something 'quoted-symbol something | quoted                                |   |
-|             1 | t      | t      | something 'quoted-symbol something | symbol                                |   |
-|             1 | t      | t      | one :two:three:four: five          | :two:                                 |   |
-|             1 | t      | t      | one :two:three:four: five          | :three:                               |   |
-|             1 | t      | t      | one :two:three:four: five          | one                                   |   |
-|             1 | t      | t      | one :two: three                    | one                                   |   |
-|             1 | t      | t      | one :two: three                    | :two:                                 |   |
-|             1 | t      | t      | one :two:three:four: five          | :two:                                 |   |
-|             1 | t      | t      | one :two:three:four: five          | :three:                               |   |
-|             1 | t      | t      | one :two:three:four: five          | one                                   |   |
-|             1 | t      | t      | one :two:three:four: five          | [ \n]:\([[:alnum:]_@#%:]+\):[ \n\n\n] |   |
-|               |        |        |                                    |                                       |   |
-|             2 | nil    | nil    | videos                             | eos                                   |   |
-|             2 | t      | t      | symbol-name                        | name                                  |   |
-|             2 | t      | nil    | something 'quoted-symbol something | quoted                                |   |
-|             2 | t      | t      | something 'quoted-symbol something | symbol                                |   |
-|             2 | t      | nil    | one :two:three:four: five          | :two:                                 |   |
-|             2 | t      | nil    | one :two:three:four: five          | :three:                               |   |
-|             2 | t      | t      | one :two:three:four: five          | one                                   |   |
-|             2 | t      | t      | one :two: three                    | one                                   |   |
-|             2 | t      | nil    | one :two: three                    | :two:                                 |   |
-|             2 | t      | nil    | one :two:three:four: five          | :two:                                 |   |
-|             2 | t      | nil    | one :two:three:four: five          | :three:                               |   |
-|             2 | t      | t      | one :two:three:four: five          | one                                   |   |
-|             2 | t      | nil    | one :two:three:four: five          | [ \n]:\([[:alnum:]_@#%:]+\):[ \n\n\n] |   |
-|               |        |        |                                    |                                       |   |
-|             3 | nil    | t      | videos                             | eos                                   |   |
-|             3 | t      | t      | symbol-name                        | name                                  |   |
-|             3 | t      | t      | something 'quoted-symbol something | quoted                                |   |
-|             3 | t      | t      | something 'quoted-symbol something | symbol                                |   |
-|             3 | t      | t      | one :two:three:four: five          | :two:                                 |   |
-|             3 | t      | t      | one :two:three:four: five          | :three:                               |   |
-|             3 | t      | t      | one :two:three:four: five          | one                                   |   |
-|             3 | t      | t      | one :two: three                    | one                                   |   |
-|             3 | t      | t      | one :two: three                    | :two:                                 |   |
-|             3 | t      | t      | one :two:three:four: five          | :two:                                 |   |
-|             3 | t      | t      | one :two:three:four: five          | :three:                               |   |
-|             3 | t      | t      | one :two:three:four: five          | one                                   |   |
-|             3 | t      | t      | one :two:three:four: five          | [ \n]:\([[:alnum:]_@#%:]+\):[ \n\n\n] |   |
-|               |        |        |                                    |                                       |   |
-|             4 | nil    | nil    | videos                             | eos                                   |   |
-|             4 | t      | nil    | symbol-name                        | name                                  |   |
-|             4 | t      | t      | something 'quoted-symbol something | quoted                                |   |
-|             4 | t      | nil    | something 'quoted-symbol something | symbol                                |   |
-|             4 | t      | nil    | one :two:three:four: five          | :two:                                 |   |
-|             4 | t      | nil    | one :two:three:four: five          | :three:                               |   |
-|             4 | t      | nil    | one :two:three:four: five          | one                                   |   |
-|             4 | t      | nil    | one :two: three                    | one                                   |   |
-|             4 | t      | nil    | one :two: three                    | :two:                                 |   |
-|             4 | t      | nil    | one :two:three:four: five          | :two:                                 |   |
-|             4 | t      | nil    | one :two:three:four: five          | :three:                               |   |
-|             4 | t      | nil    | one :two:three:four: five          | one                                   |   |
-|             4 | t      | nil    | one :two:three:four: five          | [ \n]:\([[:alnum:]_@#%:]+\):[ \n\n\n] |   |
-|               |        |        |                                    |                                       |   |
-|             5 | nil    | nil    | videos                             | eos                                   |   |
-|             5 | t      | t      | symbol-name                        | name                                  |   |
-|             5 | t      | nil    | something 'quoted-symbol something | quoted                                |   |
-|             5 | t      | t      | something 'quoted-symbol something | symbol                                |   |
-|             5 | t      | nil    | one :two:three:four: five          | :two:                                 |   |
-|             5 | t      | t      | one :two:three:four: five          | :three:                               |   |
-|             5 | t      | t      | one :two:three:four: five          | one                                   |   |
-|             5 | t      | t      | one :two: three                    | one                                   |   |
-|             5 | t      | nil    | one :two: three                    | :two:                                 |   |
-|             5 | t      | nil    | one :two:three:four: five          | :two:                                 |   |
-|             5 | t      | t      | one :two:three:four: five          | :three:                               |   |
-|             5 | t      | t      | one :two:three:four: five          | one                                   |   |
-|             5 | t      | t      | one :two:three:four: five          | [ \n]:\([[:alnum:]_@#%:]+\):[ \n\n\n] |   |
-|               |        |        |                                    |                                       |   |
-|             6 | nil    | nil    | videos                             | eos                                   |   |
-|             6 | t      | t      | symbol-name                        | name                                  |   |
-|             6 | t      | nil    | something 'quoted-symbol something | quoted                                |   |
-|             6 | t      | t      | something 'quoted-symbol something | symbol                                |   |
-|             6 | t      | nil    | one :two:three:four: five          | :two:                                 |   |
-|             6 | t      | t      | one :two:three:four: five          | :three:                               |   |
-|             6 | t      | t      | one :two:three:four: five          | one                                   |   |
-|             6 | t      | t      | one :two: three                    | one                                   |   |
-|             6 | t      | nil    | one :two: three                    | :two:                                 |   |
-|             6 | t      | nil    | one :two:three:four: five          | :two:                                 |   |
-|             6 | t      | t      | one :two:three:four: five          | :three:                               |   |
-|             6 | t      | t      | one :two:three:four: five          | one                                   |   |
-|             6 | t      | t      | one :two:three:four: five          | [ \n]:\([[:alnum:]_@#%:]+\):[ \n\n\n] |   |
-|               |        |        |                                    |                                       |   |
-|             7 | nil    | nil    | videos                             | eos                                   |   |
-|             7 | t      | t      | symbol-name                        | name                                  |   |
-|             7 | t      | t      | something 'quoted-symbol something | quoted                                |   |
-|             7 | t      | t      | something 'quoted-symbol something | symbol                                |   |
-|             7 | t      | nil    | one :two:three:four: five          | :two:                                 |   |
-|             7 | t      | t      | one :two:three:four: five          | :three:                               |   |
-|             7 | t      | t      | one :two:three:four: five          | one                                   |   |
-|             7 | t      | t      | one :two: three                    | one                                   |   |
-|             7 | t      | nil    | one :two: three                    | :two:                                 |   |
-|             7 | t      | nil    | one :two:three:four: five          | :two:                                 |   |
-|             7 | t      | t      | one :two:three:four: five          | :three:                               |   |
-|             7 | t      | t      | one :two:three:four: five          | one                                   |   |
-|             7 | t      | t      | one :two:three:four: five          | [ \n]:\([[:alnum:]_@#%:]+\):[ \n\n\n] |   |
-|               |        |        |                                    |                                       |   |
-|      8:org re | nil    | t      | videos                             | eos                                   |   |
-|      8:org re | t      | t      | symbol-name                        | name                                  |   |
-|      8:org re | t      | t      | something 'quoted-symbol something | quoted                                |   |
-|      8:org re | t      | t      | something 'quoted-symbol something | symbol                                |   |
-|      8:org re | t      | t      | one :two:three:four: five          | :two:                                 |   |
-|      8:org re | t      | t      | one :two:three:four: five          | :three:                               |   |
-|      8:org re | t      | t      | one :two:three:four: five          | one                                   |   |
-|      8:org re | t      | t      | one :two: three                    | one                                   |   |
-|      8:org re | t      | t      | one :two: three                    | :two:                                 |   |
-|      8:org re | t      | t      | one :two:three:four: five          | :two:                                 |   |
-|      8:org re | t      | t      | one :two:three:four: five          | :three:                               |   |
-|      8:org re | t      | t      | one :two:three:four: five          | one                                   |   |
-|      8:org re | t      | t      | one :two:three:four: five          | [ \n]:\([[:alnum:]_@#%:]+\):[ \n\n\n] |   |
-|               |        |        |                                    |                                       |   |
-|  9:org re mod | nil    | nil    | videos                             | eos                                   |   |
-|  9:org re mod | t      | t      | symbol-name                        | name                                  |   |
-|  9:org re mod | t      | nil    | something 'quoted-symbol something | quoted                                |   |
-|  9:org re mod | t      | t      | something 'quoted-symbol something | symbol                                |   |
-|  9:org re mod | t      | nil    | one :two:three:four: five          | :two:                                 |   |
-|  9:org re mod | t      | t      | one :two:three:four: five          | :three:                               |   |
-|  9:org re mod | t      | t      | one :two:three:four: five          | one                                   |   |
-|  9:org re mod | t      | t      | one :two: three                    | one                                   |   |
-|  9:org re mod | t      | nil    | one :two: three                    | :two:                                 |   |
-|  9:org re mod | t      | nil    | one :two:three:four: five          | :two:                                 |   |
-|  9:org re mod | t      | t      | one :two:three:four: five          | :three:                               |   |
-|  9:org re mod | t      | t      | one :two:three:four: five          | one                                   |   |
-|  9:org re mod | t      | t      | one :two:three:four: five          | [ \n]:\([[:alnum:]_@#%:]+\):[ \n\n\n] |   |
-|               |        |        |                                    |                                       |   |
-| 10:org re mod | nil    | nil    | videos                             | eos                                   |   |
-| 10:org re mod | t      | t      | symbol-name                        | name                                  |   |
-| 10:org re mod | t      | t      | something 'quoted-symbol something | quoted                                |   |
-| 10:org re mod | t      | t      | something 'quoted-symbol something | symbol                                |   |
-| 10:org re mod | t      | nil    | one :two:three:four: five          | :two:                                 |   |
-| 10:org re mod | t      | t      | one :two:three:four: five          | :three:                               |   |
-| 10:org re mod | t      | t      | one :two:three:four: five          | one                                   |   |
-| 10:org re mod | t      | t      | one :two: three                    | one                                   |   |
-| 10:org re mod | t      | nil    | one :two: three                    | :two:                                 |   |
-| 10:org re mod | t      | nil    | one :two:three:four: five          | :two:                                 |   |
-| 10:org re mod | t      | t      | one :two:three:four: five          | :three:                               |   |
-| 10:org re mod | t      | t      | one :two:three:four: five          | one                                   |   |
-| 10:org re mod | t      | t      | one :two:three:four: five          | [ \n]:\([[:alnum:]_@#%:]+\):[ \n\n\n] |   |
-|               |        |        |                                    |                                       |   |
-| 11:org re mod | nil    | nil    | videos                             | eos                                   |   |
-| 11:org re mod | t      | t      | symbol-name                        | name                                  |   |
-| 11:org re mod | t      | t      | something 'quoted-symbol something | quoted                                |   |
-| 11:org re mod | t      | t      | something 'quoted-symbol something | symbol                                |   |
-| 11:org re mod | t      | t      | one :two:three:four: five          | :two:                                 |   |
-| 11:org re mod | t      | t      | one :two:three:four: five          | :three:                               |   |
-| 11:org re mod | t      | t      | one :two:three:four: five          | one                                   |   |
-| 11:org re mod | t      | t      | one :two: three                    | one                                   |   |
-| 11:org re mod | t      | t      | one :two: three                    | :two:                                 |   |
-| 11:org re mod | t      | t      | one :two:three:four: five          | :two:                                 |   |
-| 11:org re mod | t      | t      | one :two:three:four: five          | :three:                               |   |
-| 11:org re mod | t      | t      | one :two:three:four: five          | one                                   |   |
-| 11:org re mod | t      | t      | one :two:three:four: five          | [ \n]:\([[:alnum:]_@#%:]+\):[ \n\n\n] |   |
-|               |        |        |                                    |                                       |   |
+|           Num | Expect | Result | Target                             | Token            |   |
+|             1 | nil    | t      | videos                             | eos              |   |
+|             1 | nil    | t      | soliloquy                          | sol              |   |
+|             1 | nil    | t      | keyboard                           | boa              |   |
+|             1 | t      | t      | symbol-name                        | name             |   |
+|             1 | t      | t      | something 'quoted-symbol something | quoted           |   |
+|             1 | t      | t      | something 'quoted-symbol something | symbol           |   |
+|             1 | t      | t      | something 'quoted-symbol something | quoted-symbol    |   |
+|             1 | t      | t      | something 'quoted-symbol something | 'quoted-symbol   |   |
+|             1 | t      | t      | one :two:three:four: five          | one              |   |
+|             1 | t      | t      | one :two:three:four: five          | :two:            |   |
+|             1 | t      | t      | one :two:three:four: five          | :three:          |   |
+|             1 | t      | t      | one :two:three:four: five          | :four:           |   |
+|             1 | t      | t      | one :two:three:four: five          | five             |   |
+|             1 | t      | t      | one :two:three:four: five          | :two:three:      |   |
+|             1 | t      | t      | one :two:three:four: five          | :three:four:     |   |
+|             1 | t      | t      | one :two:three:four: five          | :two:three:four: |   |
+|               |        |        |                                    |                  |   |
+|             2 | nil    | nil    | videos                             | eos              |   |
+|             2 | nil    | nil    | soliloquy                          | sol              |   |
+|             2 | nil    | nil    | keyboard                           | boa              |   |
+|             2 | t      | t      | symbol-name                        | name             |   |
+|             2 | t      | nil    | something 'quoted-symbol something | quoted           |   |
+|             2 | t      | t      | something 'quoted-symbol something | symbol           |   |
+|             2 | t      | nil    | something 'quoted-symbol something | quoted-symbol    |   |
+|             2 | t      | t      | something 'quoted-symbol something | 'quoted-symbol   |   |
+|             2 | t      | t      | one :two:three:four: five          | one              |   |
+|             2 | t      | nil    | one :two:three:four: five          | :two:            |   |
+|             2 | t      | nil    | one :two:three:four: five          | :three:          |   |
+|             2 | t      | nil    | one :two:three:four: five          | :four:           |   |
+|             2 | t      | t      | one :two:three:four: five          | five             |   |
+|             2 | t      | nil    | one :two:three:four: five          | :two:three:      |   |
+|             2 | t      | nil    | one :two:three:four: five          | :three:four:     |   |
+|             2 | t      | nil    | one :two:three:four: five          | :two:three:four: |   |
+|               |        |        |                                    |                  |   |
+|             3 | nil    | t      | videos                             | eos              |   |
+|             3 | nil    | t      | soliloquy                          | sol              |   |
+|             3 | nil    | t      | keyboard                           | boa              |   |
+|             3 | t      | t      | symbol-name                        | name             |   |
+|             3 | t      | t      | something 'quoted-symbol something | quoted           |   |
+|             3 | t      | t      | something 'quoted-symbol something | symbol           |   |
+|             3 | t      | t      | something 'quoted-symbol something | quoted-symbol    |   |
+|             3 | t      | t      | something 'quoted-symbol something | 'quoted-symbol   |   |
+|             3 | t      | t      | one :two:three:four: five          | one              |   |
+|             3 | t      | t      | one :two:three:four: five          | :two:            |   |
+|             3 | t      | t      | one :two:three:four: five          | :three:          |   |
+|             3 | t      | t      | one :two:three:four: five          | :four:           |   |
+|             3 | t      | t      | one :two:three:four: five          | five             |   |
+|             3 | t      | t      | one :two:three:four: five          | :two:three:      |   |
+|             3 | t      | t      | one :two:three:four: five          | :three:four:     |   |
+|             3 | t      | t      | one :two:three:four: five          | :two:three:four: |   |
+|               |        |        |                                    |                  |   |
+|             4 | nil    | nil    | videos                             | eos              |   |
+|             4 | nil    | nil    | soliloquy                          | sol              |   |
+|             4 | nil    | nil    | keyboard                           | boa              |   |
+|             4 | t      | nil    | symbol-name                        | name             |   |
+|             4 | t      | t      | something 'quoted-symbol something | quoted           |   |
+|             4 | t      | nil    | something 'quoted-symbol something | symbol           |   |
+|             4 | t      | nil    | something 'quoted-symbol something | quoted-symbol    |   |
+|             4 | t      | nil    | something 'quoted-symbol something | 'quoted-symbol   |   |
+|             4 | t      | nil    | one :two:three:four: five          | one              |   |
+|             4 | t      | nil    | one :two:three:four: five          | :two:            |   |
+|             4 | t      | nil    | one :two:three:four: five          | :three:          |   |
+|             4 | t      | nil    | one :two:three:four: five          | :four:           |   |
+|             4 | t      | nil    | one :two:three:four: five          | five             |   |
+|             4 | t      | nil    | one :two:three:four: five          | :two:three:      |   |
+|             4 | t      | nil    | one :two:three:four: five          | :three:four:     |   |
+|             4 | t      | nil    | one :two:three:four: five          | :two:three:four: |   |
+|               |        |        |                                    |                  |   |
+|             5 | nil    | nil    | videos                             | eos              |   |
+|             5 | nil    | nil    | soliloquy                          | sol              |   |
+|             5 | nil    | nil    | keyboard                           | boa              |   |
+|             5 | t      | t      | symbol-name                        | name             |   |
+|             5 | t      | nil    | something 'quoted-symbol something | quoted           |   |
+|             5 | t      | t      | something 'quoted-symbol something | symbol           |   |
+|             5 | t      | nil    | something 'quoted-symbol something | quoted-symbol    |   |
+|             5 | t      | t      | something 'quoted-symbol something | 'quoted-symbol   |   |
+|             5 | t      | t      | one :two:three:four: five          | one              |   |
+|             5 | t      | nil    | one :two:three:four: five          | :two:            |   |
+|             5 | t      | t      | one :two:three:four: five          | :three:          |   |
+|             5 | t      | nil    | one :two:three:four: five          | :four:           |   |
+|             5 | t      | t      | one :two:three:four: five          | five             |   |
+|             5 | t      | nil    | one :two:three:four: five          | :two:three:      |   |
+|             5 | t      | nil    | one :two:three:four: five          | :three:four:     |   |
+|             5 | t      | nil    | one :two:three:four: five          | :two:three:four: |   |
+|               |        |        |                                    |                  |   |
+|             6 | nil    | nil    | videos                             | eos              |   |
+|             6 | nil    | nil    | soliloquy                          | sol              |   |
+|             6 | nil    | nil    | keyboard                           | boa              |   |
+|             6 | t      | t      | symbol-name                        | name             |   |
+|             6 | t      | nil    | something 'quoted-symbol something | quoted           |   |
+|             6 | t      | t      | something 'quoted-symbol something | symbol           |   |
+|             6 | t      | nil    | something 'quoted-symbol something | quoted-symbol    |   |
+|             6 | t      | t      | something 'quoted-symbol something | 'quoted-symbol   |   |
+|             6 | t      | t      | one :two:three:four: five          | one              |   |
+|             6 | t      | nil    | one :two:three:four: five          | :two:            |   |
+|             6 | t      | t      | one :two:three:four: five          | :three:          |   |
+|             6 | t      | nil    | one :two:three:four: five          | :four:           |   |
+|             6 | t      | t      | one :two:three:four: five          | five             |   |
+|             6 | t      | nil    | one :two:three:four: five          | :two:three:      |   |
+|             6 | t      | nil    | one :two:three:four: five          | :three:four:     |   |
+|             6 | t      | nil    | one :two:three:four: five          | :two:three:four: |   |
+|               |        |        |                                    |                  |   |
+|             7 | nil    | nil    | videos                             | eos              |   |
+|             7 | nil    | nil    | soliloquy                          | sol              |   |
+|             7 | nil    | nil    | keyboard                           | boa              |   |
+|             7 | t      | t      | symbol-name                        | name             |   |
+|             7 | t      | t      | something 'quoted-symbol something | quoted           |   |
+|             7 | t      | t      | something 'quoted-symbol something | symbol           |   |
+|             7 | t      | t      | something 'quoted-symbol something | quoted-symbol    |   |
+|             7 | t      | t      | something 'quoted-symbol something | 'quoted-symbol   |   |
+|             7 | t      | t      | one :two:three:four: five          | one              |   |
+|             7 | t      | nil    | one :two:three:four: five          | :two:            |   |
+|             7 | t      | t      | one :two:three:four: five          | :three:          |   |
+|             7 | t      | nil    | one :two:three:four: five          | :four:           |   |
+|             7 | t      | t      | one :two:three:four: five          | five             |   |
+|             7 | t      | nil    | one :two:three:four: five          | :two:three:      |   |
+|             7 | t      | nil    | one :two:three:four: five          | :three:four:     |   |
+|             7 | t      | nil    | one :two:three:four: five          | :two:three:four: |   |
+|               |        |        |                                    |                  |   |
+|      8:org re | nil    | t      | videos                             | eos              |   |
+|      8:org re | nil    | t      | soliloquy                          | sol              |   |
+|      8:org re | nil    | t      | keyboard                           | boa              |   |
+|      8:org re | t      | t      | symbol-name                        | name             |   |
+|      8:org re | t      | t      | something 'quoted-symbol something | quoted           |   |
+|      8:org re | t      | t      | something 'quoted-symbol something | symbol           |   |
+|      8:org re | t      | t      | something 'quoted-symbol something | quoted-symbol    |   |
+|      8:org re | t      | t      | something 'quoted-symbol something | 'quoted-symbol   |   |
+|      8:org re | t      | t      | one :two:three:four: five          | one              |   |
+|      8:org re | t      | t      | one :two:three:four: five          | :two:            |   |
+|      8:org re | t      | t      | one :two:three:four: five          | :three:          |   |
+|      8:org re | t      | t      | one :two:three:four: five          | :four:           |   |
+|      8:org re | t      | t      | one :two:three:four: five          | five             |   |
+|      8:org re | t      | t      | one :two:three:four: five          | :two:three:      |   |
+|      8:org re | t      | t      | one :two:three:four: five          | :three:four:     |   |
+|      8:org re | t      | t      | one :two:three:four: five          | :two:three:four: |   |
+|               |        |        |                                    |                  |   |
+|  9:org re mod | nil    | nil    | videos                             | eos              |   |
+|  9:org re mod | nil    | nil    | soliloquy                          | sol              |   |
+|  9:org re mod | nil    | nil    | keyboard                           | boa              |   |
+|  9:org re mod | t      | t      | symbol-name                        | name             |   |
+|  9:org re mod | t      | nil    | something 'quoted-symbol something | quoted           |   |
+|  9:org re mod | t      | t      | something 'quoted-symbol something | symbol           |   |
+|  9:org re mod | t      | nil    | something 'quoted-symbol something | quoted-symbol    |   |
+|  9:org re mod | t      | t      | something 'quoted-symbol something | 'quoted-symbol   |   |
+|  9:org re mod | t      | t      | one :two:three:four: five          | one              |   |
+|  9:org re mod | t      | nil    | one :two:three:four: five          | :two:            |   |
+|  9:org re mod | t      | t      | one :two:three:four: five          | :three:          |   |
+|  9:org re mod | t      | nil    | one :two:three:four: five          | :four:           |   |
+|  9:org re mod | t      | t      | one :two:three:four: five          | five             |   |
+|  9:org re mod | t      | nil    | one :two:three:four: five          | :two:three:      |   |
+|  9:org re mod | t      | nil    | one :two:three:four: five          | :three:four:     |   |
+|  9:org re mod | t      | nil    | one :two:three:four: five          | :two:three:four: |   |
+|               |        |        |                                    |                  |   |
+| 10:org re mod | nil    | nil    | videos                             | eos              |   |
+| 10:org re mod | nil    | nil    | soliloquy                          | sol              |   |
+| 10:org re mod | nil    | nil    | keyboard                           | boa              |   |
+| 10:org re mod | t      | t      | symbol-name                        | name             |   |
+| 10:org re mod | t      | t      | something 'quoted-symbol something | quoted           |   |
+| 10:org re mod | t      | t      | something 'quoted-symbol something | symbol           |   |
+| 10:org re mod | t      | t      | something 'quoted-symbol something | quoted-symbol    |   |
+| 10:org re mod | t      | t      | something 'quoted-symbol something | 'quoted-symbol   |   |
+| 10:org re mod | t      | t      | one :two:three:four: five          | one              |   |
+| 10:org re mod | t      | nil    | one :two:three:four: five          | :two:            |   |
+| 10:org re mod | t      | t      | one :two:three:four: five          | :three:          |   |
+| 10:org re mod | t      | nil    | one :two:three:four: five          | :four:           |   |
+| 10:org re mod | t      | t      | one :two:three:four: five          | five             |   |
+| 10:org re mod | t      | nil    | one :two:three:four: five          | :two:three:      |   |
+| 10:org re mod | t      | nil    | one :two:three:four: five          | :three:four:     |   |
+| 10:org re mod | t      | nil    | one :two:three:four: five          | :two:three:four: |   |
+|               |        |        |                                    |                  |   |
+| 11:org re mod | nil    | nil    | videos                             | eos              |   |
+| 11:org re mod | nil    | nil    | soliloquy                          | sol              |   |
+| 11:org re mod | nil    | nil    | keyboard                           | boa              |   |
+| 11:org re mod | t      | t      | symbol-name                        | name             |   |
+| 11:org re mod | t      | t      | something 'quoted-symbol something | quoted           |   |
+| 11:org re mod | t      | t      | something 'quoted-symbol something | symbol           |   |
+| 11:org re mod | t      | t      | something 'quoted-symbol something | quoted-symbol    |   |
+| 11:org re mod | t      | t      | something 'quoted-symbol something | 'quoted-symbol   |   |
+| 11:org re mod | t      | t      | one :two:three:four: five          | one              |   |
+| 11:org re mod | t      | t      | one :two:three:four: five          | :two:            |   |
+| 11:org re mod | t      | t      | one :two:three:four: five          | :three:          |   |
+| 11:org re mod | t      | t      | one :two:three:four: five          | :four:           |   |
+| 11:org re mod | t      | t      | one :two:three:four: five          | five             |   |
+| 11:org re mod | t      | t      | one :two:three:four: five          | :two:three:      |   |
+| 11:org re mod | t      | t      | one :two:three:four: five          | :three:four:     |   |
+| 11:org re mod | t      | t      | one :two:three:four: five          | :two:three:four: |   |
+|               |        |        |                                    |                  |   |
 
 
 ** MAYBE Use grep to find matching lines
