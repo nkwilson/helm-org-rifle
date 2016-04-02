@@ -771,6 +771,10 @@ e.g search agenda files, or files in a directory.  Maybe write a =with-unopened-
 
 This would probably make it simpler and faster.  Rather than trying to match a tags token across the entire node, it could just be matched against the tags string.  Could probably do away with the complex and confusing tags regexp matching and simplify the prep-token function.
 
+*** TODO Handle tag negations
+
+Will have to do this separately as well I guess.
+
 ** TODO Case-sensitive if caps are present
 
 It would be easy to disable case-folding if caps are present in the search string.
@@ -829,6 +833,93 @@ Broke substring again with commit 7b6865ab8999f95ef00b8972710835f53af24f11
 
   "Regexp used to match Org tag strings.  From org.el.")
 #+END_SRC
+
+Now I need to make a function to determine whether a string is a tag (what about a series of tags in one string?):
+
+#+BEGIN_SRC elisp
+
+  (setq tagtestlist '(
+                      ":tag1:"
+                      ":tag1:tag2:"
+                      "a:tag1:tag2:"
+                      ":tag1:tag2:a"
+                      "a :tag1:tag2:"
+                      "a :tag1:tag2:a"
+                      "a :tag1:tag2: a"
+                      ))
+
+  ;; This is not it; it matches ...apparently anything...
+  (mapit tagtestlist (list it (string-match (org-re "\\(?:[ \t]+\\(:[[:alnum:]_@#%%:]+:\\)\\)?") it)))
+#+END_SRC
+
+#+RESULTS:
+| :tag1:          | 0 |
+| :tag1:tag2:     | 0 |
+| a:tag1:tag2:    | 0 |
+| :tag1:tag2:a    | 0 |
+| a :tag1:tag2:   | 0 |
+| a :tag1:tag2:a  | 0 |
+| a :tag1:tag2: a | 0 |
+
+#+BEGIN_SRC elisp
+  ;; Let's try this one
+  (mapit tagtestlist (list it (string-match (org-re ":\\([[:alnum:]_@#%:]+\\):[ \t]*$") it)))
+
+  ;; (string-match (org-re ":\\([[:alnum:]_@#%:]+\\):[ \t]*$") "aa") ; nil
+  ;; (string-match (org-re ":\\([[:alnum:]_@#%:]+\\):[ \t]*$") ":tag1:") ; 0
+  ;; (string-match (org-re ":\\([[:alnum:]_@#%:]+\\):[ \t]*$") ":tag1:tag2:") ; 0
+  ;; (string-match (org-re ":\\([[:alnum:]_@#%:]+\\):[ \t]*$") "a:tag1:tag2:") ; 1 <==WRONG
+  ;; (string-match (org-re ":\\([[:alnum:]_@#%:]+\\):[ \t]*$") ":tag1:tag2:a") ; nil
+  ;; (string-match (org-re ":\\([[:alnum:]_@#%:]+\\):[ \t]*$") "a :tag1:tag2:") ; 2
+  ;; (string-match (org-re ":\\([[:alnum:]_@#%:]+\\):[ \t]*$") "a :tag1:tag2:a") ; nil
+  ;; (string-match (org-re ":\\([[:alnum:]_@#%:]+\\):[ \t]*$") "a :tag1:tag2: a") ; nil
+#+END_SRC
+
+#+RESULTS:
+| :tag1:          |   0 |
+| :tag1:tag2:     |   0 |
+| a:tag1:tag2:    |   1 |
+| :tag1:tag2:a    | nil |
+| a :tag1:tag2:   |   2 |
+| a :tag1:tag2:a  | nil |
+| a :tag1:tag2: a | nil |
+
+Well that's not very useful.  It matches tags and tag sets, but it also matches some invalid tag strings. Guess I might as well do a simpler function:
+
+#+BEGIN_SRC elisp
+(string-match (rx bos ":" (1+ (any alnum "_")) ":" eos))
+#+END_SRC
+
+#+BEGIN_SRC elisp
+  (mapit tagtestlist (list it (string-match (rx bos ":" (1+ (any alnum ?_ ?:)) ":" eos) it)))
+#+END_SRC
+
+#+RESULTS:
+| :tag1:          | 0   |
+| :tag1:tag2:     | 0   |
+| a:tag1:tag2:    | nil |
+| :tag1:tag2:a    | nil |
+| a :tag1:tag2:   | nil |
+| a :tag1:tag2:a  | nil |
+| a :tag1:tag2: a | nil |
+
+Ok, that works:
+
+#+BEGIN_SRC elisp
+  (defun helm-org-rifle-is-tag-string-p (string)
+    "Return t if STRING is an Org tag string containing one or more tags and nothing else."
+    (string-match (rx bos ":" (1+ (any alnum ?_ ?:)) ":" eos) string))
+#+END_SRC
+
+#+BEGIN_SRC elisp
+  (let* ((input '("notatag" "a:badtag:" ":onetag:" ":two:tags:"))
+         (tag-strings (-select 'helm-org-rifle-is-tag-string-p input))
+         (tags (-flatten (--map (split-string it ":" t) tag-strings))))
+    tags)
+#+END_SRC
+
+#+RESULTS:
+| onetag | two | tags |
 
 ** MAYBE Use grep to find matching lines
 

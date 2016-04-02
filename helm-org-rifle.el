@@ -326,6 +326,10 @@ includes further matching parts separated by newlines.
 POSITION is the position in BUFFER where the candidate heading
 begins."
   (let* ((input (split-string input " " t))
+         (tag-strings (-select 'helm-org-rifle-is-tag-string-p input))
+         (input (-remove 'helm-org-is-tag-string-p tag-strings))
+         (tags (-flatten (--map (split-string it ":" t)
+                                (-select 'helm-org-rifle-is-tag-string-p input))))
          (negations (-keep (lambda (token)
                              (when (string-match "^!" token)
                                (setq input (remove token input))  ; Remove negations from input
@@ -465,6 +469,10 @@ created."
       (let ((org-odd-levels-only odd-levels))
         (font-lock-fontify-buffer)
         (buffer-string)))))
+
+(defun helm-org-rifle-is-tag-string-p (string)
+  "Return t if STRING is an Org tag string containing one or more tags and nothing else."
+  (string-match (rx bos ":" (1+ (any alnum ?_ ?:)) ":" eos) string))
 
 (defun helm-org-rifle-set-input-idle-delay ()
   "Set `helm-input-idle-delay' in Helm buffer."
