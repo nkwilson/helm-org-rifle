@@ -1053,3 +1053,26 @@ org-font-lock-add-tag-faces                                   18          9.402.
 org-raise-scripts                                             18          7.807e-06     4.337...e-07
 #+end_example
 
+
+* DONE [#A] Weird heading-only, second-word substring matching
+CLOSED: [2016-04-02 Sat 04:48]
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2016-04-02 Sat 04:48] \\
+  This seems to be fixed now.
+:END:
+:PROPERTIES:
+:ARCHIVE_TIME: 2016-04-02 Sat 10:46
+:ARCHIVE_FILE: ~/src/helm-org-rifle/notes.org
+:ARCHIVE_CATEGORY: ???
+:ARCHIVE_TODO: DONE
+:ARCHIVE_OLPATH: Plans/Substring matching vs. tag matching
+:END:
+
+[[https://www.reddit.com/r/emacs/comments/4c4fpo/helmorgrifle_rifle_through_your_org_files/d1hdoop][From /u/washy9999]]:
+
+#+BEGIN_QUOTE
+incidentally, on the matter of searching for substrings... if i enter a single word to search for i get a results list. if i then start entering a second word helm filters the results for each character that i enter. so, i get substring searches for words after the first! (this is for headings...it gets more complicated if i do searches that return topic content.)
+#+END_QUOTE
+
+Hm, this is strange.  I'll have to check on it.
+
