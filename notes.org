@@ -806,7 +806,29 @@ Hm, this is strange.  I'll have to check on it.
 
 *** TODO Broken again
 
-Now it's /doing/ substring matching again.  I specifically tested this earlier and it was working correctly, not matching substrings.  Now it's doing it again.  What.
+Broke substring again with commit 7b6865ab8999f95ef00b8972710835f53af24f11
+
+#+BEGIN_SRC elisp
+(defconst helm-org-rifle-tags-re (org-re ":\\([[:alnum:]_@#%:]+\\):[ \t]*$")
+  ;; This commented one is another regexp that I think I got somewhere
+  ;; in org.el.  It seems to be the wrong one, because tag matching
+  ;; doesn't seem to work when I use it, and it does seem to work when
+  ;; I use the one above.  But this has been so confusing that I'm
+  ;; leaving it here just in case I need it again, at least for a
+  ;; while, until I'm really sure it's working.
+
+  ;; Sure enough, when I use this regexp:
+
+  ;; (org-re "\\(?:[ \t]+\\(:[[:alnum:]_@#%%:]+:\\)\\)?")
+
+  ;; ...it matches tags properly, but also matches substrings.  And when I use this regexp:
+
+  ;; (org-re ":\\([[:alnum:]_@#%:]+\\):[ \t]*$")
+
+  ;; ...it doesn't match tags, but it avoids matching substrings.  I guess I'm going to have to redo the tag-matching code.  Sigh.
+
+  "Regexp used to match Org tag strings.  From org.el.")
+#+END_SRC
 
 ** MAYBE Use grep to find matching lines
 
