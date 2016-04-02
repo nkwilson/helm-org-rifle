@@ -6,7 +6,7 @@
      - [[#search-files-instead-of-buffers][Search files instead of buffers]]
      - [[#match-tags-separately][Match tags separately]]
      - [[#case-sensitive-if-caps-are-present][Case-sensitive if caps are present]]
-     - [[#substring-matching][Substring matching]]
+     - [[#substring-matching-vs-tag-matching][Substring matching vs. tag matching]]
      - [[#maybe-use-grep-to-find-matching-lines][MAYBE Use grep to find matching lines]]
      - [[#maybe-match-only-headings][MAYBE Match only headings]]
      - [[#maybe-testing-with-buttercup][MAYBE Testing with Buttercup]]
@@ -779,36 +779,15 @@ Will have to do this separately as well I guess.
 
 It would be easy to disable case-folding if caps are present in the search string.
 
-** TODO Substring matching
+** TODO Substring matching vs. tag matching
 
-Does searching for "solution" match this subheading?
+[2016-04-02 Sat 10:42] It seems that I either have substrings /not/ matching, which is the behavior I want, but tags don't match properly--or I have tags matching properly, but substrings are matched too.
 
-#+BEGIN_SRC elisp
-(helm-org-rifle-get-candidates-in-buffer (get-file-buffer "test.org") "solution")
-#+END_SRC
+A way to fix this might be to match tags separately by matching against the tags returned by =org-heading-components=.  But I'm not sure this will work, because that would then require calling =org-heading-components= for every heading, which I already know would be very slow.  I need to use =re-search-forward= as much as possible to keep performance good.
 
-...No, it does not.  That will probably need to be an option, customizable and/or with a prefix arg.
+So I guess I'm stuck with banging my head against these brick regexps until I get a breakthrough.  I guess if Org can do it, I can too.
 
-*** Test entry
-
-Solutions
-
-*** DONE [#A] Weird heading-only, second-word substring matching
-CLOSED: [2016-04-02 Sat 04:48]
-:LOGBOOK:
-- State "DONE"       from "TODO"       [2016-04-02 Sat 04:48] \\
-  This seems to be fixed now.
-:END:
-
-[[https://www.reddit.com/r/emacs/comments/4c4fpo/helmorgrifle_rifle_through_your_org_files/d1hdoop][From /u/washy9999]]:
-
-#+BEGIN_QUOTE
-incidentally, on the matter of searching for substrings... if i enter a single word to search for i get a results list. if i then start entering a second word helm filters the results for each character that i enter. so, i get substring searches for words after the first! (this is for headings...it gets more complicated if i do searches that return topic content.)
-#+END_QUOTE
-
-Hm, this is strange.  I'll have to check on it.
-
-*** TODO Broken again
+*** Regexp experiments
 
 Broke substring again with commit 7b6865ab8999f95ef00b8972710835f53af24f11
 
@@ -920,6 +899,286 @@ Ok, that works:
 
 #+RESULTS:
 | onetag | two | tags |
+
+**** Part 2
+:PROPERTIES:
+:ID:       dd5ed66f-bc6a-493c-aa2b-12fe0e9436e1
+:END:
+
+[2016-04-02 Sat 10:48] I think what I need is to find a regexp or regexp prefix/suffix that will both a) match tag strings, and b) /not/ match substrings everywhere else.
+
+And maybe that is the problem right there: matching tags would seem to /require/ matching substrings, because tags can occur in sets separated by colons.  It seems like these would be mutually exclusive.  But then again, Org seems to do it.  Let's do some experiments:
+
+#+BEGIN_SRC elisp
+  ;; Test against these strings to see if tags work properly
+  (setq tagtestlist '(
+                      ":tag1:"
+                      ":tag1:tag2:"
+                      "a:tag1:tag2:"
+                      ":tag1:tag2:a"
+                      "a :tag1:tag2:"
+                      "a :tag1:tag2:a"
+                      "a :tag1:tag2: a"
+                      ))
+
+(defmacro test-regexps (targets-tokens regexps)
+`(append '(("Num" "Expect" "Result" "Token" "Target"))
+          (cl-loop for rel in ,regexps
+                   for prefix = (nth 1 rel)
+                   for suffix = (nth 2 rel)
+                   append (cl-loop for set in ,targets-tokens
+                                   append (cl-loop for token in (cddr set)
+                                                   for target = (car set)
+                                                   for expect = (cadr set) collect
+                                                   (list (car rel)
+                                                         (format "%s" expect)
+                                                         (if (string-match (concat prefix token suffix) target)
+                                                             t nil)
+                                                         (format "%s" token)
+                                                         (format "%s" target)))))))
+  
+  ;; Test against these strings to see if substring matching works properly
+  ;; Format: (target expect-t-or-nil tokens)
+  (setq substringtestlist '(
+                            ("videos" nil "eos")
+                            ("symbol-name" t "name")
+                            ("something 'quoted-symbol something" t "quoted" "symbol")
+                            ("one :two:three:four: five" t ":two:" ":three:" "one")
+                            ("one :two: three" t "one" ":two:")
+                            ))
+  
+  ;; Regexp test list: list of lists in format:
+  ;; (description prefix suffix)
+  (setq regexptestlist `(
+                         ("1"
+                          ,(rx (or bow (any punct)))
+                          ,(rx (or eow (any punct))))
+                         ("2"
+                          ,(rx bow)
+                          ,(rx eow))
+                         ("3"
+                          ,(rx (or bow (not (any alnum))))
+                          ,(rx (or eow (not (any alnum))))
+                          )
+                         ("4"
+                          ,(rx (not (any alnum space)))
+                          ,(rx (not (any alnum space)))
+                          )
+                         ("5"
+                          "\\b"
+                          "\\b"
+                          )
+                         ("6"
+                          "\\(\\b\\|\\_<\\)"
+                          "\\(\\b\\|\\_>\\)"
+                          )
+                         ("7"
+                          "\\(\\b\\|\\_<\\|[[:punct:]]\\)"
+                          "\\(\\b\\|\\_>\\|[[:punct:]]\\)"
+                          )))
+  
+  (append '(("Num" "Expect" "Result" "Token" "Target"))
+          (cl-loop for rel in regexptestlist
+                   for prefix = (nth 1 rel)
+                   for suffix = (nth 2 rel)
+                   append (cl-loop for set in substringtestlist
+                                   append (cl-loop for token in (cddr set)
+                                                   for target = (car set)
+                                                   for expect = (cadr set) collect
+                                                   (list (car rel)
+                                                         (format "%s" expect)
+                                                         (if (string-match (concat prefix token suffix) target)
+                                                             t nil)
+                                                         (format "%s" token)
+                                                         (format "%s" target))))))
+#+END_SRC
+
+#+RESULTS:
+| Num | Expect | Result | Token   | Target                             |
+|   1 | nil    | t      | eos     | videos                             |
+|   1 | t      | t      | name    | symbol-name                        |
+|   1 | t      | t      | quoted  | something 'quoted-symbol something |
+|   1 | t      | t      | symbol  | something 'quoted-symbol something |
+|   1 | t      | t      | :two:   | one :two:three:four: five          |
+|   1 | t      | t      | :three: | one :two:three:four: five          |
+|   1 | t      | t      | one     | one :two:three:four: five          |
+|   1 | t      | t      | one     | one :two: three                    |
+|   1 | t      | t      | :two:   | one :two: three                    |
+|   2 | nil    | nil    | eos     | videos                             |
+|   2 | t      | t      | name    | symbol-name                        |
+|   2 | t      | nil    | quoted  | something 'quoted-symbol something |
+|   2 | t      | t      | symbol  | something 'quoted-symbol something |
+|   2 | t      | nil    | :two:   | one :two:three:four: five          |
+|   2 | t      | nil    | :three: | one :two:three:four: five          |
+|   2 | t      | t      | one     | one :two:three:four: five          |
+|   2 | t      | t      | one     | one :two: three                    |
+|   2 | t      | nil    | :two:   | one :two: three                    |
+|   3 | nil    | t      | eos     | videos                             |
+|   3 | t      | t      | name    | symbol-name                        |
+|   3 | t      | t      | quoted  | something 'quoted-symbol something |
+|   3 | t      | t      | symbol  | something 'quoted-symbol something |
+|   3 | t      | t      | :two:   | one :two:three:four: five          |
+|   3 | t      | t      | :three: | one :two:three:four: five          |
+|   3 | t      | t      | one     | one :two:three:four: five          |
+|   3 | t      | t      | one     | one :two: three                    |
+|   3 | t      | t      | :two:   | one :two: three                    |
+|   4 | nil    | nil    | eos     | videos                             |
+|   4 | t      | nil    | name    | symbol-name                        |
+|   4 | t      | t      | quoted  | something 'quoted-symbol something |
+|   4 | t      | nil    | symbol  | something 'quoted-symbol something |
+|   4 | t      | nil    | :two:   | one :two:three:four: five          |
+|   4 | t      | nil    | :three: | one :two:three:four: five          |
+|   4 | t      | nil    | one     | one :two:three:four: five          |
+|   4 | t      | nil    | one     | one :two: three                    |
+|   4 | t      | nil    | :two:   | one :two: three                    |
+|   5 | nil    | nil    | eos     | videos                             |
+|   5 | t      | t      | name    | symbol-name                        |
+|   5 | t      | nil    | quoted  | something 'quoted-symbol something |
+|   5 | t      | t      | symbol  | something 'quoted-symbol something |
+|   5 | t      | nil    | :two:   | one :two:three:four: five          |
+|   5 | t      | t      | :three: | one :two:three:four: five          |
+|   5 | t      | t      | one     | one :two:three:four: five          |
+|   5 | t      | t      | one     | one :two: three                    |
+|   5 | t      | nil    | :two:   | one :two: three                    |
+|   6 | nil    | nil    | eos     | videos                             |
+|   6 | t      | t      | name    | symbol-name                        |
+|   6 | t      | nil    | quoted  | something 'quoted-symbol something |
+|   6 | t      | t      | symbol  | something 'quoted-symbol something |
+|   6 | t      | nil    | :two:   | one :two:three:four: five          |
+|   6 | t      | t      | :three: | one :two:three:four: five          |
+|   6 | t      | t      | one     | one :two:three:four: five          |
+|   6 | t      | t      | one     | one :two: three                    |
+|   6 | t      | nil    | :two:   | one :two: three                    |
+|   7 | nil    | nil    | eos     | videos                             |
+|   7 | t      | t      | name    | symbol-name                        |
+|   7 | t      | t      | quoted  | something 'quoted-symbol something |
+|   7 | t      | t      | symbol  | something 'quoted-symbol something |
+|   7 | t      | nil    | :two:   | one :two:three:four: five          |
+|   7 | t      | t      | :three: | one :two:three:four: five          |
+|   7 | t      | t      | one     | one :two:three:four: five          |
+|   7 | t      | t      | one     | one :two: three                    |
+|   7 | t      | nil    | :two:   | one :two: three                    |
+
+#7 almost works, but there's the problem: it doesn't match tags correctly.
+
+Just for fun, macro-style:
+
+#+BEGIN_SRC elisp
+  (defmacro test-regexps (targets-tokens regexps)
+"Where TARGETS-TOKENS is a list of lists, each being (TARGET EXPECTED-NIL-OR-T &rest TOKENS),
+and REGEXPS is a list of lists, each being (DESCRIPTION PREFIX SUFFIX)."
+    `(append '(("Num" "Expect" "Result" "Token" "Target"))
+             (cl-loop for rel in ,regexps
+                      for prefix = (nth 1 rel)
+                      for suffix = (nth 2 rel)
+                      append (cl-loop for set in ,targets-tokens
+                                      append (cl-loop for token in (cddr set)
+                                                      for target = (car set)
+                                                      for expect = (cadr set) collect
+                                                      (list (car rel)
+                                                            (format "%s" expect)
+                                                            (if (string-match (concat prefix token suffix) target)
+                                                                t nil)
+                                                            (format "%s" token)
+                                                            (format "%s" target)))))))
+  
+  (test-regexps '(("videos" nil "eos")
+                  ("symbol-name" t "name")
+                  ("something 'quoted-symbol something" t "quoted" "symbol")
+                  ("one :two:three:four: five" t ":two:" ":three:" "one")
+                  ("one :two: three" t "one" ":two:"))
+                `( ("1"
+                    ,(rx (or bow (any punct)))
+                    ,(rx (or eow (any punct))))
+                   ("2"
+                    ,(rx bow)
+                    ,(rx eow))
+                   ("3"
+                    ,(rx (or bow (not (any alnum))))
+                    ,(rx (or eow (not (any alnum))))
+                    )
+                   ("4"
+                    ,(rx (not (any alnum space)))
+                    ,(rx (not (any alnum space)))
+                    )
+                   ("5"
+                    "\\b"
+                    "\\b"
+                    )
+                   ("6"
+                    "\\(\\b\\|\\_<\\)"
+                    "\\(\\b\\|\\_>\\)"
+                    )
+                   ("7"
+                    "\\(\\b\\|\\_<\\|[[:punct:]]\\)"
+                    "\\(\\b\\|\\_>\\|[[:punct:]]\\)")))
+#+END_SRC
+#+RESULTS:
+| Num | Expect | Result | Token   | Target                             |
+|   1 | nil    | t      | eos     | videos                             |
+|   1 | t      | t      | name    | symbol-name                        |
+|   1 | t      | t      | quoted  | something 'quoted-symbol something |
+|   1 | t      | t      | symbol  | something 'quoted-symbol something |
+|   1 | t      | t      | :two:   | one :two:three:four: five          |
+|   1 | t      | t      | :three: | one :two:three:four: five          |
+|   1 | t      | t      | one     | one :two:three:four: five          |
+|   1 | t      | t      | one     | one :two: three                    |
+|   1 | t      | t      | :two:   | one :two: three                    |
+|   2 | nil    | nil    | eos     | videos                             |
+|   2 | t      | t      | name    | symbol-name                        |
+|   2 | t      | nil    | quoted  | something 'quoted-symbol something |
+|   2 | t      | t      | symbol  | something 'quoted-symbol something |
+|   2 | t      | nil    | :two:   | one :two:three:four: five          |
+|   2 | t      | nil    | :three: | one :two:three:four: five          |
+|   2 | t      | t      | one     | one :two:three:four: five          |
+|   2 | t      | t      | one     | one :two: three                    |
+|   2 | t      | nil    | :two:   | one :two: three                    |
+|   3 | nil    | t      | eos     | videos                             |
+|   3 | t      | t      | name    | symbol-name                        |
+|   3 | t      | t      | quoted  | something 'quoted-symbol something |
+|   3 | t      | t      | symbol  | something 'quoted-symbol something |
+|   3 | t      | t      | :two:   | one :two:three:four: five          |
+|   3 | t      | t      | :three: | one :two:three:four: five          |
+|   3 | t      | t      | one     | one :two:three:four: five          |
+|   3 | t      | t      | one     | one :two: three                    |
+|   3 | t      | t      | :two:   | one :two: three                    |
+|   4 | nil    | nil    | eos     | videos                             |
+|   4 | t      | nil    | name    | symbol-name                        |
+|   4 | t      | t      | quoted  | something 'quoted-symbol something |
+|   4 | t      | nil    | symbol  | something 'quoted-symbol something |
+|   4 | t      | nil    | :two:   | one :two:three:four: five          |
+|   4 | t      | nil    | :three: | one :two:three:four: five          |
+|   4 | t      | nil    | one     | one :two:three:four: five          |
+|   4 | t      | nil    | one     | one :two: three                    |
+|   4 | t      | nil    | :two:   | one :two: three                    |
+|   5 | nil    | nil    | eos     | videos                             |
+|   5 | t      | t      | name    | symbol-name                        |
+|   5 | t      | nil    | quoted  | something 'quoted-symbol something |
+|   5 | t      | t      | symbol  | something 'quoted-symbol something |
+|   5 | t      | nil    | :two:   | one :two:three:four: five          |
+|   5 | t      | t      | :three: | one :two:three:four: five          |
+|   5 | t      | t      | one     | one :two:three:four: five          |
+|   5 | t      | t      | one     | one :two: three                    |
+|   5 | t      | nil    | :two:   | one :two: three                    |
+|   6 | nil    | nil    | eos     | videos                             |
+|   6 | t      | t      | name    | symbol-name                        |
+|   6 | t      | nil    | quoted  | something 'quoted-symbol something |
+|   6 | t      | t      | symbol  | something 'quoted-symbol something |
+|   6 | t      | nil    | :two:   | one :two:three:four: five          |
+|   6 | t      | t      | :three: | one :two:three:four: five          |
+|   6 | t      | t      | one     | one :two:three:four: five          |
+|   6 | t      | t      | one     | one :two: three                    |
+|   6 | t      | nil    | :two:   | one :two: three                    |
+|   7 | nil    | nil    | eos     | videos                             |
+|   7 | t      | t      | name    | symbol-name                        |
+|   7 | t      | t      | quoted  | something 'quoted-symbol something |
+|   7 | t      | t      | symbol  | something 'quoted-symbol something |
+|   7 | t      | nil    | :two:   | one :two:three:four: five          |
+|   7 | t      | t      | :three: | one :two:three:four: five          |
+|   7 | t      | t      | one     | one :two:three:four: five          |
+|   7 | t      | t      | one     | one :two: three                    |
+|   7 | t      | nil    | :two:   | one :two: three                    |
+
 
 ** MAYBE Use grep to find matching lines
 
