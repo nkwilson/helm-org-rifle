@@ -442,14 +442,14 @@ Files are opened if necessary, and the resulting buffers are left open."
 
 ;;;;; Sources
 
-(defun helm-org-rifle-get-source-for-buffer (buffer)
+(cl-defun helm-org-rifle-get-source-for-buffer (buffer &key (candidate-transformer nil))
   "Return Helm source for BUFFER."
   (let ((source (helm-build-sync-source (buffer-name buffer)
                   :after-init-hook helm-org-rifle-after-init-hook
                   :candidates (lambda ()
                                 (when (s-present? helm-pattern)
                                   (helm-org-rifle-get-candidates-in-buffer (helm-attr 'buffer) helm-pattern)))
-
+                  :candidate-transformer candidate-transformer
                   :match 'identity
                   :multiline t
                   :volatile t
@@ -760,6 +760,54 @@ Results is a list of strings with text-properties :NODE-BEG and :BUFFER."
     (org-reveal)
     (org-cycle)))
 
+;;;;; Timestamp functions
+
+(defun helm-org-rifle-sort-nodes-by-latest-timestamp (nodes)
+  "Sort list of node plists by latest timestamp in each node."
+  (-sort (lambda (a b)
+           (> (seq-max (plist-get a :timestamp-floats))
+              (seq-max (plist-get b :timestamp-floats))))
+         nodes))
+
+(defun helm-org-rifle-add-timestamps-to-nodes (nodes)
+  "Add `:timestamps' to NODES.
+NODES is a list of plists as returned by `helm-org-rifle-transform-candidates-to-list-of-nodes'."
+  (->> nodes
+       ;; Add timestamp objects
+       (--map (plist-put it :timestamps (helm-org-rifle-timestamps-in-node (plist-get it :node-beg))))
+       ;; Add float-converted timestamps
+       (-map (lambda (node)
+               (let ((timestamps (cdar (plist-get node :timestamps))))
+                 (plist-put node
+                            :timestamp-floats (if timestamps
+                                                  (--map (org-time-string-to-seconds (plist-get it :raw-value))
+                                                         timestamps)
+                                                (list 0))))))))
+
+(defun helm-org-rifle-transformer-sort-by-latest-timestamp (candidates source)
+  "Sort CANDIDATES by latest timestamp in each candidate in SOURCE."
+  (with-current-buffer (cdr (assoc 'buffer source))
+    (->> candidates
+         (helm-org-rifle-transform-candidates-to-list-of-nodes)
+         (helm-org-rifle-add-timestamps-to-nodes)
+         (helm-org-rifle-sort-nodes-by-latest-timestamp)
+         (helm-org-rifle-transform-list-of-nodes-to-candidates))))
+
+(defun helm-org-rifle-timestamps-in-node (&optional node-start node-end)
+  "Return list of Org timestamp objects in node that begins at NODE-START or current point.
+Objects are those provided by `org-element-timestamp-parser'."
+  (save-excursion
+    (goto-char (or node-start (org-entry-beginning-position)))
+    (let ((node-end (or node-end (org-entry-end-position))))
+      (cl-loop for ts-start = (cdr (org-element-timestamp-successor))
+               while (and ts-start (< ts-start node-end))
+               collect (progn
+                         (goto-char ts-start)
+                         (org-element-timestamp-parser))
+               into result
+               do (goto-char (plist-get (cadar (last result)) :end))
+               finally return result))))
+
 ;;;;; Support functions
 
 (defun helm-org-rifle-buffer-visible-p (buffer)
@@ -860,6 +908,18 @@ i.e. for S \":tag1:tag2:\" a list '(\":tag1:\" \":tag2:\") is returned."
   "Set `helm-input-idle-delay' in Helm buffer."
   (with-helm-buffer
     (setq-local helm-input-idle-delay helm-org-rifle-input-idle-delay)))
+
+(defun helm-org-rifle-transform-candidates-to-list-of-nodes (candidates)
+  "Transform Helm-style CANDIDATES list to list of plists."
+  (--map (list :node-beg (cadr it)
+               :text (car it))
+         candidates))
+
+(defun helm-org-rifle-transform-list-of-nodes-to-candidates (nodes)
+  "Transform list of node plists to Helm-style candidates."
+  (--map (list (plist-get it :text)
+               (plist-get it :node-beg))
+         nodes))
 
 (provide 'helm-org-rifle)
 
