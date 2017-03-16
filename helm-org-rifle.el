@@ -250,17 +250,26 @@ because you can always revert your changes).)"
 (defvar helm-org-rifle-occur-last-input nil
   "Last input given, used to avoid re-running search when input hasn't changed.")
 
+(defvar helm-org-rifle-transformer nil
+  "Transformer function, used for sorting.  Not intended to be set directly.")
 
 ;;;; Functions
 
 ;;;;; Commands
 
 ;;;###autoload
+(defun helm-org-rifle-sort-by-latest-timestamp ()
+  (interactive)
+  (let ((helm-candidate-separator " ")
+        (helm-org-rifle-transformer 'helm-org-rifle-transformer-sort-by-latest-timestamp))
+    (helm :sources (helm-org-rifle-get-sources-for-open-buffers))))
+
+;;;###autoload
 (defun helm-org-rifle-current-buffer-sort-by-latest-timestamp ()
   (interactive)
-  (let ((helm-candidate-separator " "))
-    (helm :sources (helm-org-rifle-get-source-for-buffer (current-buffer)
-                                           :candidate-transformer 'helm-org-rifle-transformer-sort-by-latest-timestamp))))
+  (let ((helm-candidate-separator " ")
+        (helm-org-rifle-transformer 'helm-org-rifle-transformer-sort-by-latest-timestamp))
+    (helm :sources (helm-org-rifle-get-source-for-buffer (current-buffer)))))
 
 ;;;###autoload
 (defun helm-org-rifle ()
@@ -449,14 +458,14 @@ Files are opened if necessary, and the resulting buffers are left open."
 
 ;;;;; Sources
 
-(cl-defun helm-org-rifle-get-source-for-buffer (buffer &key (candidate-transformer nil))
+(cl-defun helm-org-rifle-get-source-for-buffer (buffer)
   "Return Helm source for BUFFER."
   (let ((source (helm-build-sync-source (buffer-name buffer)
                   :after-init-hook helm-org-rifle-after-init-hook
                   :candidates (lambda ()
                                 (when (s-present? helm-pattern)
                                   (helm-org-rifle-get-candidates-in-buffer (helm-attr 'buffer) helm-pattern)))
-                  :candidate-transformer candidate-transformer
+                  :candidate-transformer helm-org-rifle-transformer
                   :match 'identity
                   :multiline t
                   :volatile t
