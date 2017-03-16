@@ -256,6 +256,13 @@ because you can always revert your changes).)"
 ;;;;; Commands
 
 ;;;###autoload
+(defun helm-org-rifle-current-buffer-sort-by-latest-timestamp ()
+  (interactive)
+  (let ((helm-candidate-separator " "))
+    (helm :sources (helm-org-rifle-get-source-for-buffer (current-buffer)
+                                           :candidate-transformer 'helm-org-rifle-transformer-sort-by-latest-timestamp))))
+
+;;;###autoload
 (defun helm-org-rifle ()
   "This is my rifle.  There are many like it, but this one is mine.
 
