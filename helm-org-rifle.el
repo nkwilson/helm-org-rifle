@@ -458,7 +458,7 @@ Files are opened if necessary, and the resulting buffers are left open."
 
 ;;;;; Sources
 
-(cl-defun helm-org-rifle-get-source-for-buffer (buffer)
+(defun helm-org-rifle-get-source-for-buffer (buffer)
   "Return Helm source for BUFFER."
   (let ((source (helm-build-sync-source (buffer-name buffer)
                   :after-init-hook helm-org-rifle-after-init-hook
