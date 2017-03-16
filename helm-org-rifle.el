@@ -764,7 +764,7 @@ Results is a list of strings with text-properties :NODE-BEG and :BUFFER."
 
 
 (defun helm-org-rifle-add-timestamps-to-nodes (nodes)
-  "Add `:timestamps' to NODES.
+  "Add `:timestamps' and `:timestamp-floats' to NODES.
 NODES is a list of plists as returned by `helm-org-rifle-transform-candidates-to-list-of-nodes'."
   (->> nodes
        ;; Add timestamp objects
