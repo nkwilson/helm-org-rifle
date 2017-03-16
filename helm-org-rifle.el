@@ -762,12 +762,6 @@ Results is a list of strings with text-properties :NODE-BEG and :BUFFER."
 
 ;;;;; Timestamp functions
 
-(defun helm-org-rifle-sort-nodes-by-latest-timestamp (nodes)
-  "Sort list of node plists by latest timestamp in each node."
-  (-sort (lambda (a b)
-           (> (seq-max (plist-get a :timestamp-floats))
-              (seq-max (plist-get b :timestamp-floats))))
-         nodes))
 
 (defun helm-org-rifle-add-timestamps-to-nodes (nodes)
   "Add `:timestamps' to NODES.
@@ -783,6 +777,13 @@ NODES is a list of plists as returned by `helm-org-rifle-transform-candidates-to
                                                   (--map (org-time-string-to-seconds (plist-get it :raw-value))
                                                          timestamps)
                                                 (list 0))))))))
+
+(defun helm-org-rifle-sort-nodes-by-latest-timestamp (nodes)
+  "Sort list of node plists by latest timestamp in each node."
+  (sort nodes
+        (lambda (a b)
+          (> (seq-max (plist-get a :timestamp-floats))
+             (seq-max (plist-get b :timestamp-floats))))))
 
 (defun helm-org-rifle-transformer-sort-by-latest-timestamp (candidates source)
   "Sort CANDIDATES by latest timestamp in each candidate in SOURCE."
