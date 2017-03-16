@@ -145,6 +145,10 @@ If you're thinking about changing this, you probably know what you're doing."
   "When non-zero, always show this many characters of entry text, even if none of it matches query."
   :group 'helm-org-rifle :type 'integer)
 
+(defcustom helm-org-rifle-before-command-hook '(helm-org-rifle-set-sort-mode)
+  "Hook that runs before each helm-org-rifle command."
+  :group 'helm-org-rifle :type 'hook)
+
 (defcustom helm-org-rifle-close-unopened-file-buffers t
   "Close buffers that were not already open.
 After rifling through Org files that are not already open, close
@@ -258,18 +262,24 @@ because you can always revert your changes).)"
 ;;;;; Commands
 
 ;;;###autoload
-(defun helm-org-rifle-sort-by-latest-timestamp ()
-  (interactive)
-  (let ((helm-candidate-separator " ")
-        (helm-org-rifle-transformer 'helm-org-rifle-transformer-sort-by-latest-timestamp))
-    (helm :sources (helm-org-rifle-get-sources-for-open-buffers))))
+(cl-defmacro helm-org-rifle-define-command (name &key sources transformer)
+  "Define interactive helm-org-rifle command, which will run the appropriate hooks."
+  `(defun ,(intern (concat "helm-org-rifle-" name)) ()
+     (interactive)
+     (run-hooks 'helm-org-rifle-before-command-hook)
+     (let ((helm-candidate-separator " ")
+           (helm-org-rifle-transformer ,transformer))
+       (helm :sources ,sources))))
 
 ;;;###autoload
-(defun helm-org-rifle-current-buffer-sort-by-latest-timestamp ()
-  (interactive)
-  (let ((helm-candidate-separator " ")
-        (helm-org-rifle-transformer 'helm-org-rifle-transformer-sort-by-latest-timestamp))
-    (helm :sources (helm-org-rifle-get-source-for-buffer (current-buffer)))))
+(helm-org-rifle-define-command "sort-by-latest-timestamp"
+                 :transformer 'helm-org-rifle-transformer-sort-by-latest-timestamp
+                 :sources (helm-org-rifle-get-sources-for-open-buffers))
+
+;;;###autoload
+(helm-org-rifle-define-command "current-buffer-sort-by-latest-timestamp"
+                 :transformer 'helm-org-rifle-transformer-sort-by-latest-timestamp
+                 :sources (helm-org-rifle-get-source-for-buffer (current-buffer)))
 
 ;;;###autoload
 (defun helm-org-rifle ()
@@ -924,6 +934,12 @@ i.e. for S \":tag1:tag2:\" a list '(\":tag1:\" \":tag2:\") is returned."
   "Set `helm-input-idle-delay' in Helm buffer."
   (with-helm-buffer
     (setq-local helm-input-idle-delay helm-org-rifle-input-idle-delay)))
+
+(defun helm-org-rifle-set-sort-mode ()
+  "Set sorting mode by setting `helm-org-rifle-transformer' if prefix given."
+  (cond ((equal '(4) current-prefix-arg)
+         ;; C-u; set sorting mode
+         (setq helm-org-rifle-transformer (helm-org-rifle-prompt-for-sort-mode)))))
 
 (defun helm-org-rifle-transform-candidates-to-list-of-nodes (candidates)
   "Transform Helm-style CANDIDATES list to list of plists."
