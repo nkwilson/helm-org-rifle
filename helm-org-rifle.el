@@ -827,7 +827,7 @@ NODES is a list of plists as returned by `helm-org-rifle-transform-candidates-to
 
 (defun helm-org-rifle-transformer-sort-by-latest-timestamp (candidates)
   "Sort CANDIDATES by latest timestamp in each candidate in SOURCE."
-  (with-current-buffer helm-current-buffer  ; This is necessary or it will try to use the "*helm*" buffer instead of the source
+  (with-current-buffer (helm-attr 'buffer) ; This is necessary or it will try to use the "*helm*" buffer instead of the source
     (->> candidates
          (helm-org-rifle-transform-candidates-to-list-of-nodes)
          (helm-org-rifle-add-timestamps-to-nodes)
