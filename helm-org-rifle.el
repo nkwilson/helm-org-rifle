@@ -762,6 +762,20 @@ Results is a list of strings with text-properties :NODE-BEG and :BUFFER."
 
 ;;;;; Timestamp functions
 
+(defun helm-org-rifle-timestamps-in-node (&optional node-start node-end)
+  "Return list of Org timestamp objects in node that begins at NODE-START or current point.
+Objects are those provided by `org-element-timestamp-parser'."
+  (save-excursion
+    (goto-char (or node-start (org-entry-beginning-position)))
+    (let ((node-end (or node-end (org-entry-end-position))))
+      (cl-loop for ts-start = (cdr (org-element-timestamp-successor))
+               while (and ts-start (< ts-start node-end))
+               collect (progn
+                         (goto-char ts-start)
+                         (org-element-timestamp-parser))
+               into result
+               do (goto-char (plist-get (cadar (last result)) :end))
+               finally return result))))
 
 (defun helm-org-rifle-add-timestamps-to-nodes (nodes)
   "Add `:timestamps' and `:timestamp-floats' to NODES.
@@ -793,21 +807,6 @@ NODES is a list of plists as returned by `helm-org-rifle-transform-candidates-to
          (helm-org-rifle-add-timestamps-to-nodes)
          (helm-org-rifle-sort-nodes-by-latest-timestamp)
          (helm-org-rifle-transform-list-of-nodes-to-candidates))))
-
-(defun helm-org-rifle-timestamps-in-node (&optional node-start node-end)
-  "Return list of Org timestamp objects in node that begins at NODE-START or current point.
-Objects are those provided by `org-element-timestamp-parser'."
-  (save-excursion
-    (goto-char (or node-start (org-entry-beginning-position)))
-    (let ((node-end (or node-end (org-entry-end-position))))
-      (cl-loop for ts-start = (cdr (org-element-timestamp-successor))
-               while (and ts-start (< ts-start node-end))
-               collect (progn
-                         (goto-char ts-start)
-                         (org-element-timestamp-parser))
-               into result
-               do (goto-char (plist-get (cadar (last result)) :end))
-               finally return result))))
 
 ;;;;; Support functions
 
