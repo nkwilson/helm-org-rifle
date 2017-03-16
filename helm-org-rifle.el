@@ -799,9 +799,9 @@ NODES is a list of plists as returned by `helm-org-rifle-transform-candidates-to
           (> (seq-max (plist-get a :timestamp-floats))
              (seq-max (plist-get b :timestamp-floats))))))
 
-(defun helm-org-rifle-transformer-sort-by-latest-timestamp (candidates source)
+(defun helm-org-rifle-transformer-sort-by-latest-timestamp (candidates)
   "Sort CANDIDATES by latest timestamp in each candidate in SOURCE."
-  (with-current-buffer (cdr (assoc 'buffer source))
+  (with-current-buffer helm-current-buffer  ; This is necessary or it will try to use the "*helm*" buffer instead of the source
     (->> candidates
          (helm-org-rifle-transform-candidates-to-list-of-nodes)
          (helm-org-rifle-add-timestamps-to-nodes)
