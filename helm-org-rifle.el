@@ -265,18 +265,17 @@ because you can always revert your changes).)"
 ;;;;; Commands
 
 ;;;###autoload
-(cl-defmacro helm-org-rifle-define-command (name args docstring &key sources vars)
+(cl-defmacro helm-org-rifle-define-command (name args docstring &key sources (vars nil) (transformer nil))
   "Define interactive helm-org-rifle command, which will run the appropriate hooks.
 Helm will be called with VARS bound."
   `(cl-defun ,(intern (concat "helm-org-rifle" (when (s-present? name) (concat "-" name)))) ,args
      ,docstring
      (interactive)
      (run-hooks 'helm-org-rifle-before-command-hook)
-     (let ((helm-candidate-separator " ")
-           ,@vars)
-       (progn
-         ,@body
-         (helm :sources ,sources)))))
+     (let* ((helm-candidate-separator " ")
+            ,(when transformer '(helm-org-rifle-transformer ,transformer))
+            ,@vars)
+       (helm :sources ,sources))))
 
 ;;;###autoload
 (helm-org-rifle-define-command "" nil
