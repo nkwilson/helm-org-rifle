@@ -614,14 +614,14 @@ This is how the sausage is made."
       (with-current-buffer results-buffer
         (erase-buffer)
         (cl-loop for buffer-results in results-by-buffer
-                 do (cl-loop for entry in buffer-results
-                             do (progn
-                                  (insert entry)
-                                  (insert "\n\n"))))
-        (helm-org-rifle-occur-highlight-matches-in-buffer results-buffer input)))))
                  do (let ((buffer-name (buffer-name (get-text-property 0 :buffer (car buffer-results)))))
                       (helm-org-rifle-insert-source-header buffer-name)
                       (cl-loop for entry in buffer-results
+                               do (progn
+                                    (insert entry)
+                                    (insert "\n\n")))))
+        (helm-org-rifle-occur-highlight-matches-in-buffer results-buffer input)))))
+
 
 (defun helm-org-rifle-occur-highlight-matches-in-buffer (buffer input)
   "Highlight matches for INPUT in BUFFER using hi-lock-mode."
