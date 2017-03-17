@@ -331,7 +331,7 @@ default.  Files in DIRECTORIES are filtered using
   (unless (eq major-mode 'org-mode)
     (error "Current buffer is not an Org buffer."))
   (let ((helm-org-rifle-show-full-entry t))
-    (helm-org-rifle-occur-begin)))
+    (helm-org-rifle-occur-begin (list (current-buffer)))))
 
 ;;;;; Sources
 
@@ -562,9 +562,12 @@ This is how the sausage is made."
 
 ;;;;; Occur-style
 
-(defun helm-org-rifle-occur-begin ()
-  "Begin occur-style command, opening results buffer, focusing minibuffer, and putting results in buffer."
-  (let ((source-buffer (current-buffer))
+(defun helm-org-rifle-occur-begin (source-buffers)
+  "Begin occur-style command searching BUFFERS, opening results buffer, focusing minibuffer, and running timer to put results in buffer."
+  (let (
+        ;; I can't figure out why the asterisks are causing the buffer
+        ;; to not show up in my Helm buffer list, but it does show up
+        ;; in ibuffer.
         (results-buffer (get-buffer-create "*helm-org-rifle-occur*"))
         timer)
 
@@ -573,7 +576,8 @@ This is how the sausage is made."
       (unless (eq major-mode 'org-mode)
         (visual-line-mode)
         (org-mode)
-        (hi-lock-mode 1))
+        (hi-lock-mode 1)
+        (use-local-map helm-org-rifle-occur-keymap))
       (read-only-mode -1)
       (delete-region (point-min) (point-max))
       (pop-to-buffer results-buffer))
@@ -586,22 +590,25 @@ This is how the sausage is made."
                            0.25  ;; helm-org-rifle-input-idle-delay doesn't seem to work the same as in a Helm session, so a longer value is needed
                            'repeat
                            (lambda ()
-                             (helm-org-rifle-occur-process-input (minibuffer-contents) source-buffer results-buffer)))))
+                             (helm-org-rifle-occur-process-input (minibuffer-contents) source-buffers results-buffer)))))
           (read-from-minibuffer "pattern: " nil nil nil nil nil nil))
       (when timer (cancel-timer timer) (setq timer nil)))))
 
-(defun helm-org-rifle-occur-process-input (input source-buffer results-buffer)
-  "Find results in SOURCE-BUFFER for INPUT and insert into RESULTS-BUFFER."
+(defun helm-org-rifle-occur-process-input (input source-buffers results-buffer)
+  "Find results in SOURCE-BUFFERS for INPUT and insert into RESULTS-BUFFER."
   (when (s-present? input)
-    (let ((results (helm-org-rifle-occur-get-results-in-buffer source-buffer input)))
+    (let ((results-by-buffer (cl-loop for source-buffer in source-buffers
+                                      collect (helm-org-rifle-occur-get-results-in-buffer source-buffer input))))
       (with-current-buffer results-buffer
         (read-only-mode -1)
         (delete-region (point-min) (point-max))
         ;; (insert header)
         ;; (insert "\n\n")
-        (dolist (entry results)
-          (insert entry)
-          (insert "\n\n"))
+        (cl-loop for results in results-by-buffer
+                 do (cl-loop for entry in results
+                             do (progn
+                                  (insert entry)
+                                  (insert "\n\n"))))
         (read-only-mode)
         (helm-org-rifle-occur-highlight-matches-in-buffer results-buffer input)))))
 
