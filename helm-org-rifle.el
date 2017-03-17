@@ -215,7 +215,7 @@ because you can always revert your changes).)"
 \(What, didn't you read the last warning?  Oh, nevermind.)"
   :group 'helm-org-rifle :type 'regexp)
 
-(defvar helm-org-rifle-occur-keymap (let ((map (make-sparse-keymap)))
+(defvar helm-org-rifle-occur-keymap (let ((map (copy-keymap org-mode-map)))
                         (define-key map [mouse-1] 'helm-org-rifle-occur-goto-entry)
                         (define-key map (kbd "<RET>") 'helm-org-rifle-occur-goto-entry)
                         map)
