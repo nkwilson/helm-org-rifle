@@ -623,7 +623,6 @@ This is how the sausage is made."
                                     (insert "\n\n")))))
         (helm-org-rifle-occur-highlight-matches-in-buffer results-buffer input)))))
 
-
 (defun helm-org-rifle-occur-highlight-matches-in-buffer (buffer input)
   "Highlight matches for INPUT in BUFFER using hi-lock-mode."
   (with-current-buffer buffer
