@@ -47,29 +47,34 @@ Install [[https://github.com/emacs-helm/helm][Helm]], [[https://github.com/magna
 Run one of the rifle commands, type some words, and results will be displayed, grouped by buffer.  Hit =RET= to show the selected entry, or =<C-return>= to show it in an indirect buffer.
 
 *Commands:*
-+ =helm-org-rifle=: Show results from all open Org buffers
-+ =helm-org-rifle-agenda-files=: Show results from Org agenda files
-+ =helm-org-rifle-current-buffer=: Show results from current buffer
-+ =helm-org-rifle-directories=: Show results from selected directories; with prefix, recursively
-+ =helm-org-rifle-files=: Show results from selected files
-+ =helm-org-rifle-org-directory=: Show results from Org files in =org-directory=
++  =helm-org-rifle=: Show results from all open Org buffers
++  =helm-org-rifle-agenda-files=: Show results from Org agenda files
++  =helm-org-rifle-current-buffer=: Show results from current buffer
++  =helm-org-rifle-directories=: Show results from selected directories; with prefix, recursively
++  =helm-org-rifle-files=: Show results from selected files
++  =helm-org-rifle-org-directory=: Show results from Org files in =org-directory=
++  =helm-org-rifle-occur=: Show results from all open Org buffers in an occur-like persistent buffer (instead of a Helm buffer)
++  =helm-org-rifle-occur-current-buffer=: Show results from current buffer in an occur-like persistent buffer (instead of a Helm buffer)
 
 ** Tips
 
-+ Show results from certain buffers by typing the name of the buffer (usually the filename).
-+ Show headings with certain todo keywords by typing the keyword, e.g. =TODO= or =DONE=.
-+ Show headings with certain priorities by typing, e.g. =#A= or =[#A]=.
-+ Show headings with certain tags by searching for, e.g. =:tag1:=.
-+ Exclude results with a =!=, e.g. =pepperoni !anchovies=.
-+ Show entries in an indirect buffer by selecting that action from the Helm actions list, or by pressing =<C-return>=.
-+ You can customize the =helm-org-rifle= group if you like.
++  Show results from certain buffers by typing the name of the buffer (usually the filename).
++  Show headings with certain todo keywords by typing the keyword, e.g. =TODO= or =DONE=.
++  Show headings with certain priorities by typing, e.g. =#A= or =[#A]=.
++  Show headings with certain tags by searching for, e.g. =:tag1:=.
++  Exclude results with a =!=, e.g. =pepperoni !anchovies=.
++  Show entries in an indirect buffer by selecting that action from the Helm actions list, or by pressing =<C-return>=.
++  The keymap for =helm-org-rifle-occur= results buffers imitates the =org-speed= keys, making it quicker to navigate. Results buffers are marked read-only so you cannot modify them by accidental keypresses.
++  You can customize the =helm-org-rifle= group if you like.
 
 * Changelog
 
 ** 1.4.0-pre
 
-+ Add option =helm-org-rifle-always-show-entry-contents-chars= to show some entry contents when the query only matches the heading or metadata.
-+ Tag order is now irrelevant.  Previously, searching for =:tag1:tag2:= would not show a heading tagged =:tag2:tag1:=.  It could be worked around by searching for =:tag1: :tag2:=, but that was non-obvious and counter-intuitive.  This could be considered a bug-fix, but the change is significant enough that it belongs in a feature update to get more testing.
++  Add option =helm-org-rifle-always-show-entry-contents-chars= to show some entry contents when the query only matches the heading or metadata.
++  Tag order is now irrelevant.  Previously, searching for =:tag1:tag2:= would not show a heading tagged =:tag2:tag1:=.  It could be worked around by searching for =:tag1: :tag2:=, but that was non-obvious and counter-intuitive.  This could be considered a bug-fix, but the change is significant enough that it belongs in a feature update to get more testing.
++  New commands =helm-org-rifle-occur= and =helm-org-rifle-occur-current-buffer= which display results in an =occur=-like, persistent buffer.  These are handy when you aren't as certain of what you're looking for and you want to keep the results visible while looking at each result's source buffer.  When you click on or press =RET= on a result, the source buffer will be popped to alongside the results buffer, and the node will be revealed, cycled to, and the point moved to the same place.  These commands do not actually use Helm at all, so maybe they should be renamed to simply =org-rifle=...?
++  New option =helm-org-rifle-show-full-entry= which displays each result's entire contents rather than just the context around each matching word.  This is off by default, but the =helm-org-rifle-occur= commands activate it for their results.
 
 ** 1.3.0
 
@@ -118,42 +123,6 @@ I can't recommend [[https://github.com/tj64/outorg][Outorg]] enough.  If you edi
 None at the moment.  Bug reporter z...I mean, bug zapper, standing by...
 
 ** Ideas
-
-*** TODO Persistent results buffer like multi-occur
-
-Should be fairly easy using text properties to store the node info, making the buffer read-only, and using a keymap.  Would be especially useful for displaying entire entries instead of just context.  [[https://github.com/alphapapa/helm-org-rifle/tree/occur-style][WIP branch]]
-
-PoC code:
-
-#+BEGIN_SRC elisp
-(with-current-buffer (get-buffer-create "rifle-testing")
-
-  (let* ((buffer (find-buffer-visiting "~/org/log.org"))
-         (header (buffer-name buffer)))
-    (read-only-mode -1)
-    (delete-region (point-min) (point-max))
-    (insert header)
-    (insert "\n\n")
-    (dolist (entry (helm-org-rifle-get-candidates-in-buffer buffer "today"))
-      (-let (((text pos) entry))
-        (add-text-properties 0 (length text) (list :buffer buffer :node-beg pos) text)
-        (insert text)
-        (insert "\n")))
-    (visual-line-mode)
-    (set-text-properties (point-min) (1+ (length header)) '(font-lock-face org-level-1 fontified nil) (current-buffer))
-    (read-only-mode)
-    (org-mode)
-    (pop-to-buffer (current-buffer))))
-
-(defun org-rifle-goto-entry ()
-  (interactive)
-  (let ((properties (text-properties-at (point))))
-    (pop-to-buffer (plist-get properties :buffer))
-    (goto-char (plist-get properties :node-beg))
-    (org-reveal)
-    (org-cycle)))
-
-#+END_SRC
 
 *** TODO Use prefix arg to toggle full-path mode
 
