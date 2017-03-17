@@ -622,6 +622,9 @@ This is how the sausage is made."
                                   (insert "\n\n"))))
         (read-only-mode)
         (helm-org-rifle-occur-highlight-matches-in-buffer results-buffer input)))))
+                 do (let ((buffer-name (buffer-name (get-text-property 0 :buffer (car buffer-results)))))
+                      (helm-org-rifle-insert-source-header buffer-name)
+                      (cl-loop for entry in buffer-results
 
 (defun helm-org-rifle-occur-highlight-matches-in-buffer (buffer input)
   "Highlight matches for INPUT in BUFFER using hi-lock-mode."
@@ -680,6 +683,23 @@ created."
       (let ((org-odd-levels-only odd-levels))
         (font-lock-fontify-buffer)
         (buffer-string)))))
+
+(defun helm-org-rifle-insert-source-header (name &optional display-string)
+  "Insert header of source NAME into the current buffer.
+If DISPLAY-STRING is non-`nil' and a string value then display
+this additional info after the source name by overlay."
+  (unless (bobp)
+    (let ((start (point)))
+      (insert "\n")
+      (set-text-properties start (point) '(helm-header-separator t))))
+  (let ((start (point)))
+    (insert (concat " " name))
+    (set-text-properties (point-at-bol) (point-at-eol) '(helm-header t))
+    (when display-string
+      (overlay-put (make-overlay (point-at-bol) (point-at-eol))
+                   'display display-string))
+    (insert "\n")
+    (set-text-properties start (point) '(font-lock-face helm-source-header))))
 
 (defun helm-org-rifle-prep-token (token)
   "Apply regexp prefix and suffix for TOKEN."
