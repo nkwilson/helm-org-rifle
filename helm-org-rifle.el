@@ -216,9 +216,9 @@ because you can always revert your changes).)"
   :group 'helm-org-rifle :type 'regexp)
 
 (defvar helm-org-rifle-occur-keymap (let ((map (copy-keymap org-mode-map)))
-                        (define-key map [mouse-1] 'helm-org-rifle-occur-goto-entry)
-                        (define-key map (kbd "<RET>") 'helm-org-rifle-occur-goto-entry)
-                        map)
+                                      (define-key map [mouse-1] 'helm-org-rifle-occur-goto-entry)
+                                      (define-key map (kbd "<RET>") 'helm-org-rifle-occur-goto-entry)
+                                      map)
   "Keymap for helm-org-rifle-occur results buffers.")
 
 (defvar helm-org-rifle-show-full-entry nil
@@ -334,8 +334,8 @@ default.  Files in DIRECTORIES are filtered using
   (interactive)
   (let ((helm-org-rifle-show-full-entry t))
     (helm-org-rifle-occur-begin (--remove (string= helm-org-rifle-occur-results-buffer-name (buffer-name it))
-                            (-select 'helm-org-rifle-buffer-visible-p
-                                     (org-buffer-list nil t))))))
+                                          (-select 'helm-org-rifle-buffer-visible-p
+                                                   (org-buffer-list nil t))))))
 
 ;;;###autoload
 (defun helm-org-rifle-occur-current-buffer ()
