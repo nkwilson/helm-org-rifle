@@ -123,6 +123,38 @@ None at the moment.  Bug reporter z...I mean, bug zapper, standing by...
 
 Should be fairly easy using text properties to store the node info, making the buffer read-only, and using a keymap.  Would be especially useful for displaying entire entries instead of just context.  [[https://github.com/alphapapa/helm-org-rifle/tree/occur-style][WIP branch]]
 
+PoC code:
+
+#+BEGIN_SRC elisp
+(with-current-buffer (get-buffer-create "rifle-testing")
+
+  (let* ((buffer (find-buffer-visiting "~/org/log.org"))
+         (header (buffer-name buffer)))
+    (read-only-mode -1)
+    (delete-region (point-min) (point-max))
+    (insert header)
+    (insert "\n\n")
+    (dolist (entry (helm-org-rifle-get-candidates-in-buffer buffer "today"))
+      (-let (((text pos) entry))
+        (add-text-properties 0 (length text) (list :buffer buffer :node-beg pos) text)
+        (insert text)
+        (insert "\n")))
+    (visual-line-mode)
+    (set-text-properties (point-min) (1+ (length header)) '(font-lock-face org-level-1 fontified nil) (current-buffer))
+    (read-only-mode)
+    (org-mode)
+    (pop-to-buffer (current-buffer))))
+
+(defun org-rifle-goto-entry ()
+  (interactive)
+  (let ((properties (text-properties-at (point))))
+    (pop-to-buffer (plist-get properties :buffer))
+    (goto-char (plist-get properties :node-beg))
+    (org-reveal)
+    (org-cycle)))
+
+#+END_SRC
+
 *** TODO Use prefix arg to toggle full-path mode
 
 Along the lines of:
