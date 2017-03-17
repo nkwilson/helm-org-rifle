@@ -575,7 +575,7 @@ This is how the sausage is made."
 
 (defun helm-org-rifle-occur-begin (source-buffers)
   "Begin occur-style command searching BUFFERS, opening results buffer, focusing minibuffer, and running timer to put results in buffer."
-  (let (
+  (let ((inhibit-read-only t)
         ;; I can't figure out why the asterisks are causing the buffer
         ;; to not show up in my Helm buffer list, but it does show up
         ;; in ibuffer.
@@ -585,11 +585,11 @@ This is how the sausage is made."
     ;; Prepare buffer
     (with-current-buffer results-buffer
       (unless (eq major-mode 'org-mode)
+        (read-only-mode)
         (visual-line-mode)
         (org-mode)
         (hi-lock-mode 1)
         (use-local-map helm-org-rifle-occur-keymap))
-      (read-only-mode -1)
       (erase-buffer)
       (pop-to-buffer results-buffer))
 
@@ -608,17 +608,16 @@ This is how the sausage is made."
 (defun helm-org-rifle-occur-process-input (input source-buffers results-buffer)
   "Find results in SOURCE-BUFFERS for INPUT and insert into RESULTS-BUFFER."
   (when (s-present? input)
-    (let ((results-by-buffer (cl-loop for source-buffer in source-buffers
+    (let ((inhibit-read-only t)
+          (results-by-buffer (cl-loop for source-buffer in source-buffers
                                       collect (helm-org-rifle-occur-get-results-in-buffer source-buffer input))))
       (with-current-buffer results-buffer
-        (read-only-mode -1)
         (erase-buffer)
         (cl-loop for buffer-results in results-by-buffer
                  do (cl-loop for entry in buffer-results
                              do (progn
                                   (insert entry)
                                   (insert "\n\n"))))
-        (read-only-mode)
         (helm-org-rifle-occur-highlight-matches-in-buffer results-buffer input)))))
                  do (let ((buffer-name (buffer-name (get-text-property 0 :buffer (car buffer-results)))))
                       (helm-org-rifle-insert-source-header buffer-name)
