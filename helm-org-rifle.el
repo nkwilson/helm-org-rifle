@@ -614,6 +614,7 @@ This is how the sausage is made."
       (with-current-buffer results-buffer
         (erase-buffer)
         (cl-loop for buffer-results in results-by-buffer
+                 when buffer-results
                  do (let ((buffer-name (buffer-name (get-text-property 0 :buffer (car buffer-results)))))
                       (helm-org-rifle-insert-source-header buffer-name)
                       (cl-loop for entry in buffer-results
