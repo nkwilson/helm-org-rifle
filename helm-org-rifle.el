@@ -582,7 +582,7 @@ This is how the sausage is made."
         (results-buffer (get-buffer-create helm-org-rifle-occur-results-buffer-name))
         timer)
 
-    ;; Prepare buffer
+    ;; Prepare results buffer
     (with-current-buffer results-buffer
       (unless (eq major-mode 'org-mode)
         (read-only-mode)
@@ -598,7 +598,7 @@ This is how the sausage is made."
         (minibuffer-with-setup-hook
             (lambda ()
               (setq timer (run-with-idle-timer
-                           0.25  ;; helm-org-rifle-input-idle-delay doesn't seem to work the same as in a Helm session, so a longer value is needed
+                           0.25  ;; FIXME: helm-org-rifle-input-idle-delay doesn't seem to work the same as in a Helm session, so a longer value is needed
                            'repeat
                            (lambda ()
                              (helm-org-rifle-occur-process-input (minibuffer-contents) source-buffers results-buffer)))))
