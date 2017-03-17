@@ -583,7 +583,7 @@ This is how the sausage is made."
         (minibuffer-with-setup-hook
             (lambda ()
               (setq timer (run-with-idle-timer
-                           0.25;; helm-org-rifle-input-idle-delay
+                           0.25  ;; helm-org-rifle-input-idle-delay doesn't seem to work the same as in a Helm session, so a longer value is needed
                            'repeat
                            (lambda ()
                              (helm-org-rifle-occur-process-input (minibuffer-contents) source-buffer results-buffer)))))
