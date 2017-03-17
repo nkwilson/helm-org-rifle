@@ -111,6 +111,9 @@
 (defconst helm-org-rifle-fontify-buffer-name " *helm-org-rifle-fontify*"
   "The name of the invisible buffer used to fontify `org-mode' strings.")
 
+(defconst helm-org-rifle-occur-results-buffer-name "*helm-org-rifle-occur*"
+  "The name of the results buffer for `helm-org-rifle-occur' commands.")
+
 (defconst helm-org-rifle-tags-re (org-re "\\(?:[ \t]+\\(:[[:alnum:]_@#%%:]+:\\)\\)?")
   "Regexp used to match Org tag strings.  From org.el.")
 
@@ -568,7 +571,7 @@ This is how the sausage is made."
         ;; I can't figure out why the asterisks are causing the buffer
         ;; to not show up in my Helm buffer list, but it does show up
         ;; in ibuffer.
-        (results-buffer (get-buffer-create "*helm-org-rifle-occur*"))
+        (results-buffer (get-buffer-create helm-org-rifle-occur-results-buffer-name))
         timer)
 
     ;; Prepare buffer
