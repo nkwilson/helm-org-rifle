@@ -122,6 +122,9 @@
 (defconst helm-org-rifle-occur-results-buffer-name "*helm-org-rifle-occur*"
   "The name of the results buffer for `helm-org-rifle-occur' commands.")
 
+(defconst helm-org-rifle-sort-transformers '(nil helm-org-rifle-transformer-sort-by-latest-timestamp)
+  "List of transformer functions that sort results.  Not likely to be user-customized at this time.")
+
 (defconst helm-org-rifle-tags-re (org-re "\\(?:[ \t]+\\(:[[:alnum:]_@#%%:]+:\\)\\)?")
   "Regexp used to match Org tag strings.  From org.el.")
 
@@ -262,28 +265,22 @@ because you can always revert your changes).)"
 ;;;;; Commands
 
 ;;;###autoload
-(cl-defmacro helm-org-rifle-define-command (name &key sources transformer)
-  "Define interactive helm-org-rifle command, which will run the appropriate hooks."
-  `(defun ,(intern (concat "helm-org-rifle-" name)) ()
+(cl-defmacro helm-org-rifle-define-command (name args docstring &key sources vars)
+  "Define interactive helm-org-rifle command, which will run the appropriate hooks.
+Helm will be called with VARS bound."
+  `(cl-defun ,(intern (concat "helm-org-rifle" (when (s-present? name) (concat "-" name)))) ,args
+     ,docstring
      (interactive)
      (run-hooks 'helm-org-rifle-before-command-hook)
      (let ((helm-candidate-separator " ")
-           (helm-org-rifle-transformer ,transformer))
-       (helm :sources ,sources))))
+           ,@vars)
+       (progn
+         ,@body
+         (helm :sources ,sources)))))
 
 ;;;###autoload
-(helm-org-rifle-define-command "sort-by-latest-timestamp"
-                 :transformer 'helm-org-rifle-transformer-sort-by-latest-timestamp
-                 :sources (helm-org-rifle-get-sources-for-open-buffers))
-
-;;;###autoload
-(helm-org-rifle-define-command "current-buffer-sort-by-latest-timestamp"
-                 :transformer 'helm-org-rifle-transformer-sort-by-latest-timestamp
-                 :sources (helm-org-rifle-get-source-for-buffer (current-buffer)))
-
-;;;###autoload
-(defun helm-org-rifle ()
-  "This is my rifle.  There are many like it, but this one is mine.
+(helm-org-rifle-define-command "" nil
+                 "This is my rifle.  There are many like it, but this one is mine.
 
 My rifle is my best friend.  It is my life.  I must master it as I
 must master my life.
@@ -309,48 +306,56 @@ saviors of my life.
 
 So be it, until victory is ours and there is no enemy, but
 peace!"
-  (interactive)
-  (let ((helm-candidate-separator " "))
-    (helm :sources (helm-org-rifle-get-sources-for-open-buffers))))
+                 :sources (helm-org-rifle-get-sources-for-open-buffers))
+
+;;;###autoload
+(helm-org-rifle-define-command "current-buffer" nil
+                 "Rifle through the current buffer."
+                 :sources (helm-org-rifle-get-source-for-buffer (current-buffer)))
+
+;;;###autoload
+(helm-org-rifle-define-command "files" (&optional files)
+                 "Rifle through FILES, where FILES is a list of paths to Org files.
+If FILES is nil, prompt with `helm-read-file-name'.  All FILES
+are searched; they are not filtered with
+`helm-org-rifle-directories-filename-regexp'."
+                 :sources (--map (helm-org-rifle-get-source-for-file it) files)
+                 :vars ((files (or files (helm-read-file-name "Files: " :marked-candidates t)))
+                        (helm-candidate-separator " ")
+                        (helm-cleanup-hook (lambda ()
+                                             ;; Close new buffers if enabled
+                                             (when helm-org-rifle-close-unopened-file-buffers
+                                               (if (= 0 helm-exit-status)
+                                                   ;; Candidate selected; close other new buffers
+                                                   (let ((candidate-source (helm-attr 'name (helm-get-current-source))))
+                                                     (dolist (source (helm-get-sources))
+                                                       (unless (or (equal (helm-attr 'name source)
+                                                                          candidate-source)
+                                                                   (not (helm-attr 'new-buffer source)))
+                                                         (kill-buffer (helm-attr 'buffer source)))))
+                                                 ;; No candidates; close all new buffers
+                                                 (dolist (source (helm-get-sources))
+                                                   (when (helm-attr 'new-buffer source)
+                                                     (kill-buffer (helm-attr 'buffer source))))))))))
+
+;;;###autoload
+(helm-org-rifle-define-command "sort-by-latest-timestamp" nil
+                 "Rifle through open buffers, sorted by latest timestamp."
+                 :transformer 'helm-org-rifle-transformer-sort-by-latest-timestamp
+                 :sources (helm-org-rifle-get-sources-for-open-buffers))
+
+;;;###autoload
+(helm-org-rifle-define-command "current-buffer-sort-by-latest-timestamp" nil
+                 "Rifle through the current buffer, sorted by latest timestamp."
+                 :transformer 'helm-org-rifle-transformer-sort-by-latest-timestamp
+                 :sources (helm-org-rifle-get-source-for-buffer (current-buffer)))
 
 ;;;###autoload
 (defun helm-org-rifle-agenda-files ()
   "Rifle through Org agenda files."
+  ;; This does not need to be defined with helm-org-rifle-define-command
   (interactive)
   (helm-org-rifle-files org-agenda-files))
-
-;;;###autoload
-(defun helm-org-rifle-current-buffer ()
-  "Rifle through the current buffer."
-  (interactive)
-  (let ((helm-candidate-separator " "))
-    (helm :sources (helm-org-rifle-get-source-for-buffer (current-buffer)))))
-
-;;;###autoload
-(defun helm-org-rifle-files (&optional files)
-  "Rifle through FILES, where FILES is a list of paths to Org files.
-If FILES is nil, prompt with `helm-read-file-name'.  All FILES
-are searched; they are not filtered with
-`helm-org-rifle-directories-filename-regexp'."
-  (interactive)
-  (let ((files (or files (helm-read-file-name "Files: " :marked-candidates t)))
-        (helm-candidate-separator " ")
-        (helm-cleanup-hook (lambda ()
-                             ;; Close new buffers if enabled
-                             (when helm-org-rifle-close-unopened-file-buffers
-                               (if (= 0 helm-exit-status)
-                                   ;; Candidate selected; close other new buffers
-                                   (let ((candidate-source (helm-attr 'name (helm-get-current-source))))
-                                     (dolist (source (helm-get-sources))
-                                       (unless (or (equal (helm-attr 'name source)
-                                                          candidate-source)
-                                                   (not (helm-attr 'new-buffer source)))
-                                         (kill-buffer (helm-attr 'buffer source)))))
-                                 ;; No candidates; close all new buffers
-                                 (dolist (source (helm-get-sources))
-                                   (when (helm-attr 'new-buffer source)
-                                     (kill-buffer (helm-attr 'buffer source)))))))))
-    (helm :sources (--map (helm-org-rifle-get-source-for-file it) files))))
 
 ;;;###autoload
 (defun helm-org-rifle-directories (&optional directories toggle-recursion)
@@ -940,6 +945,10 @@ i.e. for S \":tag1:tag2:\" a list '(\":tag1:\" \":tag2:\") is returned."
   (cond ((equal '(4) current-prefix-arg)
          ;; C-u; set sorting mode
          (setq helm-org-rifle-transformer (helm-org-rifle-prompt-for-sort-mode)))))
+
+(defun helm-org-rifle-prompt-for-sort-mode ()
+  "Ask the user which sorting method to use."
+  (intern (helm-comp-read "Sort by: " helm-org-rifle-sort-transformers)))
 
 (defun helm-org-rifle-transform-candidates-to-list-of-nodes (candidates)
   "Transform Helm-style CANDIDATES list to list of plists."
