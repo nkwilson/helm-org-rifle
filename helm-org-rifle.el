@@ -328,6 +328,8 @@ default.  Files in DIRECTORIES are filtered using
   (interactive)
   (helm-org-rifle-directories (list org-directory)))
 
+
+;;;###autoload
 (defun helm-org-rifle-occur-current-buffer ()
   "Search current buffer, showing results in an occur-like, persistent buffer."
   (interactive)
