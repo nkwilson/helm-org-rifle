@@ -221,6 +221,9 @@ because you can always revert your changes).)"
                                       map)
   "Keymap for helm-org-rifle-occur results buffers.")
 
+(defvar helm-org-rifle-occur-last-input nil
+  "Last input given, used to avoid re-running search when input hasn't changed.")
+
 (defvar helm-org-rifle-show-full-entry nil
   "Show all entry text instead of just context strings.  Not
   intended to be set manually at this time.")
@@ -601,13 +604,15 @@ This is how the sausage is made."
                            0.25  ;; FIXME: helm-org-rifle-input-idle-delay doesn't seem to work the same as in a Helm session, so a longer value is needed
                            'repeat
                            (lambda ()
-                             (helm-org-rifle-occur-process-input (minibuffer-contents) source-buffers results-buffer)))))
+                             (helm-org-rifle-occur-process-input (s-trim (minibuffer-contents)) source-buffers results-buffer)))))
           (read-from-minibuffer "pattern: " nil nil nil nil nil nil))
       (when timer (cancel-timer timer) (setq timer nil)))))
 
 (defun helm-org-rifle-occur-process-input (input source-buffers results-buffer)
   "Find results in SOURCE-BUFFERS for INPUT and insert into RESULTS-BUFFER."
-  (when (s-present? input)
+  (when (and (s-present? input)
+             (not (string= input helm-org-rifle-occur-last-input)))
+    (setq helm-org-rifle-occur-last-input input)
     (let ((inhibit-read-only t)
           (results-by-buffer (cl-loop for source-buffer in source-buffers
                                       collect (helm-org-rifle-occur-get-results-in-buffer source-buffer input))))
