@@ -615,8 +615,8 @@ This is how the sausage is made."
         (delete-region (point-min) (point-max))
         ;; (insert header)
         ;; (insert "\n\n")
-        (cl-loop for results in results-by-buffer
-                 do (cl-loop for entry in results
+        (cl-loop for buffer-results in results-by-buffer
+                 do (cl-loop for entry in buffer-results
                              do (progn
                                   (insert entry)
                                   (insert "\n\n"))))
