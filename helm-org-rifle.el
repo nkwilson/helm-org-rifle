@@ -319,6 +319,12 @@ default.  Files in DIRECTORIES are filtered using
   (interactive)
   (helm-org-rifle-directories (list org-directory)))
 
+(defun helm-org-rifle-occur-current-buffer ()
+  "Search current buffer, showing results in an occur-like, persistent buffer."
+  (interactive)
+  (let ((helm-org-rifle-show-full-entry t))
+    (helm-org-rifle-occur-begin)))
+
 ;;;;; Sources
 
 (defun helm-org-rifle-get-source-for-buffer (buffer)
@@ -545,6 +551,75 @@ This is how the sausage is made."
               (goto-char node-end))))))
     ;; Return results in the order they appear in the org file
     (nreverse results)))
+
+;;;;; Occur-style
+
+(defun helm-org-rifle-occur-begin ()
+  "Begin occur-style command, opening results buffer, focusing minibuffer, and putting results in buffer."
+  (let ((source-buffer (current-buffer))
+        (results-buffer (get-buffer-create "*helm-org-rifle-occur*"))
+        timer)
+
+    ;; Prepare buffer
+    (with-current-buffer results-buffer
+      (unless (eq major-mode 'org-mode)
+        (visual-line-mode)
+        (org-mode)
+        (hi-lock-mode 1))
+      (read-only-mode -1)
+      (delete-region (point-min) (point-max))
+      (pop-to-buffer results-buffer))
+
+    ;; Run input timer
+    (unwind-protect
+        (minibuffer-with-setup-hook
+            (lambda ()
+              (setq timer (run-with-idle-timer
+                           0.25;; helm-org-rifle-input-idle-delay
+                           'repeat
+                           (lambda ()
+                             (helm-org-rifle-occur-process-input (minibuffer-contents) source-buffer results-buffer)))))
+          (read-from-minibuffer "pattern: " nil nil nil nil nil nil))
+      (when timer (cancel-timer timer) (setq timer nil)))))
+
+(defun helm-org-rifle-occur-process-input (input source-buffer results-buffer)
+  "Find results in SOURCE-BUFFER for INPUT and insert into RESULTS-BUFFER."
+  (when (s-present? input)
+    (let ((results (helm-org-rifle-occur-get-results-in-buffer source-buffer input)))
+      (with-current-buffer results-buffer
+        (read-only-mode -1)
+        (delete-region (point-min) (point-max))
+        ;; (insert header)
+        ;; (insert "\n\n")
+        (dolist (entry results)
+          (insert entry)
+          (insert "\n\n"))
+        (read-only-mode)
+        ;; Highlight matches
+        (helm-org-rifle-occur-highlight-matches-in-buffer results-buffer input)))))
+
+(defun helm-org-rifle-occur-highlight-matches-in-buffer (buffer input)
+  "Highlight matches for INPUT in BUFFER using hi-lock-mode."
+  (with-current-buffer buffer
+    (unhighlight-regexp t)
+    (dolist (token (helm-org-rifle-split-tags-in-input-list (s-split-words input)))
+      (highlight-regexp token))))
+
+(defun helm-org-rifle-occur-get-results-in-buffer (buffer input)
+  "Return list of results for INPUT in BUFFER.
+Results is a list of strings with text-properties :NODE-BEG and :BUFFER."
+  (cl-loop for entry in (helm-org-rifle-get-candidates-in-buffer buffer input)
+           collect (-let (((text pos) entry))
+                     (add-text-properties 0 (length text) (list :buffer buffer :node-beg pos) text)
+                     text)))
+
+(defun helm-org-rifle-goto-entry ()
+  (interactive)
+  (let ((properties (text-properties-at (point))))
+    (pop-to-buffer (plist-get properties :buffer))
+    (goto-char (plist-get properties :node-beg))
+    (org-reveal)
+    (org-cycle)))
 
 ;;;;; Support functions
 
