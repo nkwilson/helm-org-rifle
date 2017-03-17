@@ -590,7 +590,7 @@ This is how the sausage is made."
         (hi-lock-mode 1)
         (use-local-map helm-org-rifle-occur-keymap))
       (read-only-mode -1)
-      (delete-region (point-min) (point-max))
+      (erase-buffer)
       (pop-to-buffer results-buffer))
 
     ;; Run input timer
@@ -612,9 +612,9 @@ This is how the sausage is made."
                                       collect (helm-org-rifle-occur-get-results-in-buffer source-buffer input))))
       (with-current-buffer results-buffer
         (read-only-mode -1)
-        (delete-region (point-min) (point-max))
         ;; (insert header)
         ;; (insert "\n\n")
+        (erase-buffer)
         (cl-loop for buffer-results in results-by-buffer
                  do (cl-loop for entry in buffer-results
                              do (progn
