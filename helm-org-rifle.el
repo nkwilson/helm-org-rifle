@@ -273,7 +273,16 @@ Helm will be called with VARS bound."
      (interactive)
      (run-hooks 'helm-org-rifle-before-command-hook)
      (let* ((helm-candidate-separator " ")
-            ,(when transformer '(helm-org-rifle-transformer ,transformer))
+            ,(if transformer
+                 ;; I wish there were a cleaner way to do this,
+                 ;; because if this `if' evaluates to nil, `let' will
+                 ;; try to set `nil', which causes an error.  The
+                 ;; choices seem to be to a) evaluate to a list and
+                 ;; unsplice it (since unsplicing `nil' evaluates to
+                 ;; nothing), or b) return an ignored symbol when not
+                 ;; true.  Option B is less ugly.
+                 `(helm-org-rifle-transformer ,transformer)
+               'ignore)
             ,@vars)
        (helm :sources ,sources))))
 
