@@ -212,6 +212,12 @@ because you can always revert your changes).)"
 \(What, didn't you read the last warning?  Oh, nevermind.)"
   :group 'helm-org-rifle :type 'regexp)
 
+(defvar helm-org-rifle-occur-keymap (let ((map (make-sparse-keymap)))
+                        (define-key map [mouse-1] 'helm-org-rifle-occur-goto-entry)
+                        (define-key map (kbd "<RET>") 'helm-org-rifle-occur-goto-entry)
+                        map)
+  "Keymap for helm-org-rifle-occur results buffers.")
+
 (defvar helm-org-rifle-show-full-entry nil
   "Show all entry text instead of just context strings.  Not
   intended to be set manually at this time.")
@@ -615,11 +621,16 @@ Results is a list of strings with text-properties :NODE-BEG and :BUFFER."
                      (add-text-properties 0 (length text) (list :buffer buffer :node-beg pos) text)
                      text)))
 
-(defun helm-org-rifle-goto-entry ()
+(defun helm-org-rifle-occur-goto-entry ()
+  "Go to node in source buffer that point in occur buffer is in."
   (interactive)
-  (let ((properties (text-properties-at (point))))
-    (pop-to-buffer (plist-get properties :buffer))
-    (goto-char (plist-get properties :node-beg))
+  (let* ((properties (text-properties-at (point)))
+         (source-buffer (plist-get properties :buffer))
+         (node-beg (plist-get properties :node-beg))
+         ;; Get offset of point in node
+         (offset (+ 2 (- (point) (previous-single-property-change (point) :node-beg)))))
+    (pop-to-buffer source-buffer)
+    (goto-char (+ node-beg offset))
     (org-reveal)
     (org-cycle)))
 
