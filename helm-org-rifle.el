@@ -331,8 +331,6 @@ default.  Files in DIRECTORIES are filtered using
 (defun helm-org-rifle-occur-current-buffer ()
   "Search current buffer, showing results in an occur-like, persistent buffer."
   (interactive)
-  (unless (eq major-mode 'org-mode)
-    (error "Current buffer is not an Org buffer."))
   (let ((helm-org-rifle-show-full-entry t))
     (helm-org-rifle-occur-begin (list (current-buffer)))))
 
@@ -625,6 +623,9 @@ This is how the sausage is made."
 (defun helm-org-rifle-occur-get-results-in-buffer (buffer input)
   "Return list of results for INPUT in BUFFER.
 Results is a list of strings with text-properties :NODE-BEG and :BUFFER."
+  (with-current-buffer buffer
+    (unless (eq major-mode 'org-mode)
+      (error "Buffer %s is not an Org buffer." buffer)))
   (cl-loop for entry in (helm-org-rifle-get-candidates-in-buffer buffer input)
            collect (-let (((text pos) entry))
                      (add-text-properties 0 (length text) (list :buffer buffer :node-beg pos) text)
