@@ -344,11 +344,11 @@ default.  Files in DIRECTORIES are filtered using
 ;;;;;; Occur commands
 
 ;;;###autoload
-(cl-defmacro helm-org-rifle-define-occur-command (name docstring &key buffers)
+(cl-defmacro helm-org-rifle-define-occur-command (name docstring args &key buffers)
   "Define `helm-org-rifle-occur' command to search BUFFERS."
   `(defun ,(intern (concat "helm-org-rifle-occur"
                            (when name (concat "-" name))))
-       ()
+       ,args
      ,docstring
      (interactive)
      (let ((helm-org-rifle-show-full-contents t))
@@ -357,22 +357,58 @@ default.  Files in DIRECTORIES are filtered using
 ;;;###autoload
 (helm-org-rifle-define-occur-command
  nil "Search all Org buffers, showing results in an occur-like, persistent buffer."
+ nil
  :buffers (--remove (string= helm-org-rifle-occur-results-buffer-name (buffer-name it))
                     (-select 'helm-org-rifle-buffer-visible-p
                              (org-buffer-list nil t))))
-
+;;;###autoload
 (helm-org-rifle-define-occur-command
- "agenda-files" "Search Org agenda files, showing results in an occur-like, persistent buffer.
+ "current-buffer" "Search current buffer, showing results in an occur-like, persistent buffer."
+ nil
+ :buffers (list (current-buffer)))
+
+;;;###autoload
+(helm-org-rifle-define-occur-command
+ "files" "Search FILES, showing results in an occur-like, persistent buffer.
 Files are opened if necessary, and the resulting buffers are left open."
- :buffers (cl-loop for file in org-agenda-files
+ (files)
+ :buffers (cl-loop for file in files
                    collect (-if-let (buffer (org-find-base-buffer-visiting file))
                                buffer
                              (find-file-noselect file))))
 
 ;;;###autoload
-(helm-org-rifle-define-occur-command
- "current-buffer" "Search current buffer, showing results in an occur-like, persistent buffer."
- :buffers (list (current-buffer)))
+(defun helm-org-rifle-occur-agenda-files ()
+  "Search Org agenda files, showing results in an occur-like, persistent buffer.
+Files are opened if necessary, and the resulting buffers are left open."
+  (interactive)
+  (helm-org-rifle-occur-files org-agenda-files))
+
+;;;###autoload
+(defun helm-org-rifle-occur-org-directory ()
+  "Search files in `org-directory', showing results in an occur-like, persistent buffer.
+Files are opened if necessary, and the resulting buffers are left open."
+  (interactive)
+  (helm-org-rifle-occur-directories (list org-directory)))
+
+;;;###autoload
+(defun helm-org-rifle-occur-directories (directories)
+  "Search files in DIRECTORY, showing results in an occur-like, persistent buffer.
+Files are opened if necessary, and the resulting buffers are left open."
+  (interactive)
+  (let* ((recursive (if current-prefix-arg
+                        (not helm-org-rifle-directories-recursive)
+                      helm-org-rifle-directories-recursive))
+         (directories (or directories
+                          (-select 'f-dir? (helm-read-file-name "Directories: " :marked-candidates t))))
+         (files (-flatten (--map (f-files it
+                                          (lambda (file)
+                                            (s-matches? helm-org-rifle-directories-filename-regexp (f-filename file)))
+                                          recursive)
+                                 directories))))
+    (if files
+        (helm-org-rifle-occur-files files)
+      (error "No org files found in directories: %s" (s-join " " directories)))))
 
 ;;;;; Sources
 
