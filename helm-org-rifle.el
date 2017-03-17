@@ -361,6 +361,14 @@ default.  Files in DIRECTORIES are filtered using
                     (-select 'helm-org-rifle-buffer-visible-p
                              (org-buffer-list nil t))))
 
+(helm-org-rifle-define-occur-command
+ "agenda-files" "Search Org agenda files, showing results in an occur-like, persistent buffer.
+Files are opened if necessary, and the resulting buffers are left open."
+ :buffers (cl-loop for file in org-agenda-files
+                   collect (-if-let (buffer (org-find-base-buffer-visiting file))
+                               buffer
+                             (find-file-noselect file))))
+
 ;;;###autoload
 (helm-org-rifle-define-occur-command
  "current-buffer" "Search current buffer, showing results in an occur-like, persistent buffer."
