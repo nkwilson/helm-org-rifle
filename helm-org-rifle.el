@@ -328,6 +328,14 @@ default.  Files in DIRECTORIES are filtered using
   (interactive)
   (helm-org-rifle-directories (list org-directory)))
 
+;;;###autoload
+(defun helm-org-rifle-occur ()
+  "Search all Org buffers, showing results in an occur-like, persistent buffer."
+  (interactive)
+  (let ((helm-org-rifle-show-full-entry t))
+    (helm-org-rifle-occur-begin (--remove (string= helm-org-rifle-occur-results-buffer-name (buffer-name it))
+                            (-select 'helm-org-rifle-buffer-visible-p
+                                     (org-buffer-list nil t))))))
 
 ;;;###autoload
 (defun helm-org-rifle-occur-current-buffer ()
