@@ -322,6 +322,8 @@ default.  Files in DIRECTORIES are filtered using
 (defun helm-org-rifle-occur-current-buffer ()
   "Search current buffer, showing results in an occur-like, persistent buffer."
   (interactive)
+  (unless (eq major-mode 'org-mode)
+    (error "Current buffer is not an Org buffer."))
   (let ((helm-org-rifle-show-full-entry t))
     (helm-org-rifle-occur-begin)))
 
