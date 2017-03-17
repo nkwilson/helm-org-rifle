@@ -224,7 +224,7 @@ because you can always revert your changes).)"
                                    (define-key map (kbd "<RET>") 'helm-org-rifle-occur-goto-entry)
                                    (define-key map (kbd "q") 'quit-window)
                                    map)
-  "Keymap for helm-org-rifle-occur results buffers.")
+  "Keymap for helm-org-rifle-occur results buffers.  Imitates org-speed keys.")
 
 (defvar helm-org-rifle-occur-last-input nil
   "Last input given, used to avoid re-running search when input hasn't changed.")
