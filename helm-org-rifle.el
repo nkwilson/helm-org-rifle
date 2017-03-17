@@ -219,10 +219,7 @@ because you can always revert your changes).)"
 \(What, didn't you read the last warning?  Oh, nevermind.)"
   :group 'helm-org-rifle :type 'regexp)
 
-(defvar helm-org-rifle-occur-keymap (let ((map (copy-keymap org-mode-map)))
-                                      (define-key map [mouse-1] 'helm-org-rifle-occur-goto-entry)
-                                      (define-key map (kbd "<RET>") 'helm-org-rifle-occur-goto-entry)
-                                      map)
+(defvar helm-org-rifle-occur-map (let ((map (copy-keymap org-mode-map)))
   "Keymap for helm-org-rifle-occur results buffers.")
 
 (defvar helm-org-rifle-occur-last-input nil
@@ -594,7 +591,7 @@ This is how the sausage is made."
         (visual-line-mode)
         (org-mode)
         (hi-lock-mode 1)
-        (use-local-map helm-org-rifle-occur-keymap))
+        (use-local-map helm-org-rifle-occur-map))
       (erase-buffer)
       (pop-to-buffer results-buffer))
 
