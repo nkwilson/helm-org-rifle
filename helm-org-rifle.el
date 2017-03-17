@@ -194,6 +194,10 @@ flickering (longer delay)."
                 (function :tag "Show entries in indirect buffers." helm-org-rifle-show-entry-in-indirect-buffer)
                 (function :tag "Custom function")))
 
+(defcustom helm-org-rifle-show-full-contents nil
+  "Show all of each result's contents instead of just context around each matching word."
+  :group 'helm-org-rifle :type 'boolean)
+
 (defcustom helm-org-rifle-show-todo-keywords t
   "Show and match against Org todo keywords."
   :group 'helm-org-rifle :type 'boolean)
@@ -224,9 +228,6 @@ because you can always revert your changes).)"
 (defvar helm-org-rifle-occur-last-input nil
   "Last input given, used to avoid re-running search when input hasn't changed.")
 
-(defvar helm-org-rifle-show-full-entry nil
-  "Show all entry text instead of just context strings.  Not
-  intended to be set manually at this time.")
 
 ;;;; Functions
 
@@ -335,7 +336,7 @@ default.  Files in DIRECTORIES are filtered using
 (defun helm-org-rifle-occur ()
   "Search all Org buffers, showing results in an occur-like, persistent buffer."
   (interactive)
-  (let ((helm-org-rifle-show-full-entry t))
+  (let ((helm-org-rifle-show-full-contents t))
     (helm-org-rifle-occur-begin (--remove (string= helm-org-rifle-occur-results-buffer-name (buffer-name it))
                                           (-select 'helm-org-rifle-buffer-visible-p
                                                    (org-buffer-list nil t))))))
@@ -344,7 +345,7 @@ default.  Files in DIRECTORIES are filtered using
 (defun helm-org-rifle-occur-current-buffer ()
   "Search current buffer, showing results in an occur-like, persistent buffer."
   (interactive)
-  (let ((helm-org-rifle-show-full-entry t))
+  (let ((helm-org-rifle-show-full-contents t))
     (helm-org-rifle-occur-begin (list (current-buffer)))))
 
 ;;;;; Sources
@@ -523,7 +524,7 @@ This is how the sausage is made."
                                              thereis (s-matches? re target)))
 
                 ;; Node matches all tokens
-                (unless helm-org-rifle-show-full-entry
+                (unless helm-org-rifle-show-full-contents
                   (setq matched-words-with-context
                         (or (cl-loop for line in (mapcar 'car matching-lines-in-node)
                                      ;; Matching entry text found
@@ -563,7 +564,7 @@ This is how the sausage is made."
                                     (s-join " " (list (s-repeat (nth 0 components) "*")
                                                       heading
                                                       tags)))))
-                       (entry (if helm-org-rifle-show-full-entry
+                       (entry (if helm-org-rifle-show-full-contents
                                   (s-join "\n" (list heading (org-get-entry)))
                                 ;; Show context strings
                                 (s-join "\n" (list heading (s-join helm-org-rifle-ellipsis-string matched-words-with-context))))))
