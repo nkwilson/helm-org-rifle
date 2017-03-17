@@ -603,7 +603,6 @@ This is how the sausage is made."
           (insert entry)
           (insert "\n\n"))
         (read-only-mode)
-        ;; Highlight matches
         (helm-org-rifle-occur-highlight-matches-in-buffer results-buffer input)))))
 
 (defun helm-org-rifle-occur-highlight-matches-in-buffer (buffer input)
