@@ -612,8 +612,6 @@ This is how the sausage is made."
                                       collect (helm-org-rifle-occur-get-results-in-buffer source-buffer input))))
       (with-current-buffer results-buffer
         (read-only-mode -1)
-        ;; (insert header)
-        ;; (insert "\n\n")
         (erase-buffer)
         (cl-loop for buffer-results in results-by-buffer
                  do (cl-loop for entry in buffer-results
