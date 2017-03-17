@@ -689,7 +689,8 @@ created."
 (defun helm-org-rifle-insert-source-header (name &optional display-string)
   "Insert header of source NAME into the current buffer.
 If DISPLAY-STRING is non-`nil' and a string value then display
-this additional info after the source name by overlay."
+this additional info after the source name by overlay.
+From `helm-insert-header'."
   (unless (bobp)
     (let ((start (point)))
       (insert "\n")
