@@ -584,6 +584,7 @@ This is how the sausage is made."
         ;; to not show up in my Helm buffer list, but it does show up
         ;; in ibuffer.
         (results-buffer (get-buffer-create helm-org-rifle-occur-results-buffer-name))
+        helm-org-rifle-occur-last-input
         timer)
 
     ;; Prepare results buffer
