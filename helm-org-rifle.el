@@ -333,21 +333,30 @@ default.  Files in DIRECTORIES are filtered using
   (interactive)
   (helm-org-rifle-directories (list org-directory)))
 
-;;;###autoload
-(defun helm-org-rifle-occur ()
-  "Search all Org buffers, showing results in an occur-like, persistent buffer."
-  (interactive)
-  (let ((helm-org-rifle-show-full-contents t))
-    (helm-org-rifle-occur-begin (--remove (string= helm-org-rifle-occur-results-buffer-name (buffer-name it))
-                                          (-select 'helm-org-rifle-buffer-visible-p
-                                                   (org-buffer-list nil t))))))
+;;;;;; Occur commands
 
 ;;;###autoload
-(defun helm-org-rifle-occur-current-buffer ()
-  "Search current buffer, showing results in an occur-like, persistent buffer."
-  (interactive)
-  (let ((helm-org-rifle-show-full-contents t))
-    (helm-org-rifle-occur-begin (list (current-buffer)))))
+(cl-defmacro helm-org-rifle-define-occur-command (name docstring &key buffers)
+  "Define `helm-org-rifle-occur' command to search BUFFERS."
+  `(defun ,(intern (concat "helm-org-rifle-occur"
+                           (when name (concat "-" name))))
+       ()
+     ,docstring
+     (interactive)
+     (let ((helm-org-rifle-show-full-contents t))
+       (helm-org-rifle-occur-begin ,buffers))))
+
+;;;###autoload
+(helm-org-rifle-define-occur-command
+ nil "Search all Org buffers, showing results in an occur-like, persistent buffer."
+ :buffers (--remove (string= helm-org-rifle-occur-results-buffer-name (buffer-name it))
+                    (-select 'helm-org-rifle-buffer-visible-p
+                             (org-buffer-list nil t))))
+
+;;;###autoload
+(helm-org-rifle-define-occur-command
+ "current-buffer" "Search current buffer, showing results in an occur-like, persistent buffer."
+ :buffers (list (current-buffer)))
 
 ;;;;; Sources
 
