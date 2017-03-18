@@ -265,9 +265,9 @@ because you can always revert your changes).)"
 ;;;;; Commands
 
 ;;;###autoload
-(cl-defmacro helm-org-rifle-define-command (name args docstring &key sources (vars nil) (transformer nil))
+(cl-defmacro helm-org-rifle-define-command (name args docstring &key sources (let nil) (transformer nil))
   "Define interactive helm-org-rifle command, which will run the appropriate hooks.
-Helm will be called with VARS bound."
+Helm will be called with vars in LET bound."
   `(cl-defun ,(intern (concat "helm-org-rifle" (when (s-present? name) (concat "-" name)))) ,args
      ,docstring
      (interactive)
@@ -283,7 +283,7 @@ Helm will be called with VARS bound."
                  ;; true.  Option B is less ugly.
                  `(helm-org-rifle-transformer ,transformer)
                'ignore)
-            ,@vars)
+            ,@let)
        (helm :sources ,sources))))
 
 ;;;###autoload
@@ -331,23 +331,23 @@ If FILES is nil, prompt with `helm-read-file-name'.  All FILES
 are searched; they are not filtered with
 `helm-org-rifle-directories-filename-regexp'."
  :sources (--map (helm-org-rifle-get-source-for-file it) files)
- :vars ((files (or files (helm-read-file-name "Files: " :marked-candidates t)))
-        (helm-candidate-separator " ")
-        (helm-cleanup-hook (lambda ()
-                             ;; Close new buffers if enabled
-                             (when helm-org-rifle-close-unopened-file-buffers
-                               (if (= 0 helm-exit-status)
-                                   ;; Candidate selected; close other new buffers
-                                   (let ((candidate-source (helm-attr 'name (helm-get-current-source))))
-                                     (dolist (source (helm-get-sources))
-                                       (unless (or (equal (helm-attr 'name source)
-                                                          candidate-source)
-                                                   (not (helm-attr 'new-buffer source)))
-                                         (kill-buffer (helm-attr 'buffer source)))))
-                                 ;; No candidates; close all new buffers
-                                 (dolist (source (helm-get-sources))
-                                   (when (helm-attr 'new-buffer source)
-                                     (kill-buffer (helm-attr 'buffer source))))))))))
+ :let ((files (or files (helm-read-file-name "Files: " :marked-candidates t)))
+       (helm-candidate-separator " ")
+       (helm-cleanup-hook (lambda ()
+                            ;; Close new buffers if enabled
+                            (when helm-org-rifle-close-unopened-file-buffers
+                              (if (= 0 helm-exit-status)
+                                  ;; Candidate selected; close other new buffers
+                                  (let ((candidate-source (helm-attr 'name (helm-get-current-source))))
+                                    (dolist (source (helm-get-sources))
+                                      (unless (or (equal (helm-attr 'name source)
+                                                         candidate-source)
+                                                  (not (helm-attr 'new-buffer source)))
+                                        (kill-buffer (helm-attr 'buffer source)))))
+                                ;; No candidates; close all new buffers
+                                (dolist (source (helm-get-sources))
+                                  (when (helm-attr 'new-buffer source)
+                                    (kill-buffer (helm-attr 'buffer source))))))))))
 
 ;;;###autoload
 (helm-org-rifle-define-command
