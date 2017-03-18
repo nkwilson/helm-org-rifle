@@ -799,6 +799,9 @@ From `helm-insert-header'."
 
 (defun helm-org-rifle-occur-cleanup-buffer ()
   "Cleanup occur results buffer when search is aborted."
+  ;; FIXME: It doesn't seem like this should have to be a command,
+  ;; because it pollutes the command list, but it gave an error once
+  ;; when it waasn't one, and it caused weird behavior...
   (interactive)
   (ignore-errors
     ;; Ignore errors to avoid any weirdness which may result in
