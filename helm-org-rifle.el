@@ -234,6 +234,11 @@ because you can always revert your changes).)"
                                    map)
   "Keymap for helm-org-rifle-occur results buffers.  Imitates org-speed keys.")
 
+(defvar helm-org-rifle-occur-minibuffer-map (let ((map (copy-keymap minibuffer-local-map)))
+                                              (define-key map (kbd "C-g") 'helm-org-rifle-occur-cleanup-buffer)
+                                              map)
+  "Keymap for helm-org-rifle-occur minibuffers.")
+
 (defvar helm-org-rifle-occur-last-input nil
   "Last input given, used to avoid re-running search when input hasn't changed.")
 
@@ -680,7 +685,7 @@ This is how the sausage is made."
                            'repeat
                            (lambda ()
                              (helm-org-rifle-occur-process-input (s-trim (minibuffer-contents)) source-buffers results-buffer)))))
-          (read-from-minibuffer "pattern: " nil nil nil nil nil nil))
+          (read-from-minibuffer "pattern: " nil helm-org-rifle-occur-minibuffer-map nil nil nil nil))
       (when timer (cancel-timer timer) (setq timer nil)))))
 
 (defun helm-org-rifle-occur-process-input (input source-buffers results-buffer)
@@ -778,6 +783,10 @@ From `helm-insert-header'."
                    'display display-string))
     (insert "\n")
     (set-text-properties start (point) '(font-lock-face helm-source-header))))
+
+(defun helm-org-rifle-occur-cleanup-buffer ()
+  "Cleanup occur results buffer when search is aborted."
+  (kill-buffer helm-org-rifle-occur-results-buffer-name))
 
 (defun helm-org-rifle-prep-token (token)
   "Apply regexp prefix and suffix for TOKEN."
