@@ -288,7 +288,7 @@ Helm will be called with VARS bound."
 
 ;;;###autoload
 (helm-org-rifle-define-command
- "" nil
+ "" ()
  "This is my rifle.  There are many like it, but this one is mine.
 
 My rifle is my best friend.  It is my life.  I must master it as I
@@ -319,7 +319,7 @@ peace!"
 
 ;;;###autoload
 (helm-org-rifle-define-command
- "current-buffer" nil
+ "current-buffer" ()
  "Rifle through the current buffer."
  :sources (helm-org-rifle-get-source-for-buffer (current-buffer)))
 
@@ -351,14 +351,14 @@ are searched; they are not filtered with
 
 ;;;###autoload
 (helm-org-rifle-define-command
- "sort-by-latest-timestamp" nil
+ "sort-by-latest-timestamp" ()
  "Rifle through open buffers, sorted by latest timestamp."
  :transformer 'helm-org-rifle-transformer-sort-by-latest-timestamp
  :sources (helm-org-rifle-get-sources-for-open-buffers))
 
 ;;;###autoload
 (helm-org-rifle-define-command
- "current-buffer-sort-by-latest-timestamp" nil
+ "current-buffer-sort-by-latest-timestamp" ()
  "Rifle through the current buffer, sorted by latest timestamp."
  :transformer 'helm-org-rifle-transformer-sort-by-latest-timestamp
  :sources (helm-org-rifle-get-source-for-buffer (current-buffer)))
