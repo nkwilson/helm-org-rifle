@@ -419,33 +419,7 @@ Files are opened if necessary, and the resulting buffers are left open."
 (helm-org-rifle-define-occur-command "org-directory" ()
                                      "Search files in `org-directory', showing results in an occur-like, persistent buffer.
 Files are opened if necessary, and the resulting buffers are left open."
-                                     :directories org-directory)
-
-;;;###autoload
-(defun helm-org-rifle-occur-org-directory ()
-  "Search files in `org-directory', showing results in an occur-like, persistent buffer.
-Files are opened if necessary, and the resulting buffers are left open."
-  (interactive)
-  (helm-org-rifle-occur-directories (list org-directory)))
-
-;;;###autoload
-(defun helm-org-rifle-occur-directories (directories)
-  "Search files in DIRECTORY, showing results in an occur-like, persistent buffer.
-Files are opened if necessary, and the resulting buffers are left open."
-  (interactive)
-  (let* ((recursive (if current-prefix-arg
-                        (not helm-org-rifle-directories-recursive)
-                      helm-org-rifle-directories-recursive))
-         (directories (or directories
-                          (-select 'f-dir? (helm-read-file-name "Directories: " :marked-candidates t))))
-         (files (-flatten (--map (f-files it
-                                          (lambda (file)
-                                            (s-matches? helm-org-rifle-directories-filename-regexp (f-filename file)))
-                                          recursive)
-                                 directories))))
-    (if files
-        (helm-org-rifle-occur-files files)
-      (error "No org files found in directories: %s" (s-join " " directories)))))
+                                     :directories (list org-directory))
 
 ;;;;; Sources
 
