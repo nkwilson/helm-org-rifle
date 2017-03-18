@@ -740,7 +740,7 @@ Results is a list of strings with text-properties :NODE-BEG and :BUFFER."
   (let* ((properties (text-properties-at (point)))
          (source-buffer (plist-get properties :buffer))
          (node-beg (plist-get properties :node-beg))
-         ;; Get offset of point in node
+         ;; Get offset of point in node (not sure why +2 is necessary but it works)
          (offset (+ 2 (- (point) (previous-single-property-change (point) :node-beg)))))
     (pop-to-buffer source-buffer)
     (goto-char (+ node-beg offset))
