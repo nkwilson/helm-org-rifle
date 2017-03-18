@@ -393,14 +393,14 @@ default.  Files in DIRECTORIES are filtered using
 
 ;;;###autoload
 (helm-org-rifle-define-occur-command
- nil nil
+ nil ()
  "Search all Org buffers, showing results in an occur-like, persistent buffer."
  :buffers (--remove (string= helm-org-rifle-occur-results-buffer-name (buffer-name it))
                     (-select 'helm-org-rifle-buffer-visible-p
                              (org-buffer-list nil t))))
 ;;;###autoload
 (helm-org-rifle-define-occur-command
- "current-buffer" nil
+ "current-buffer" ()
  "Search current buffer, showing results in an occur-like, persistent buffer."
  :buffers (list (current-buffer)))
 
