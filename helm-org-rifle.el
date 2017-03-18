@@ -361,14 +361,14 @@ default.  Files in DIRECTORIES are filtered using
          (let ((recursive (if current-prefix-arg
                               (not helm-org-rifle-directories-recursive)
                             helm-org-rifle-directories-recursive)))
-           (setq directories-collected (append directories-collected
-                                               (-flatten
-                                                (--map (f-files it
-                                                                (lambda (file)
-                                                                  (s-matches? helm-org-rifle-directories-filename-regexp
-                                                                              (f-filename file)))
-                                                                recursive)
-                                                       directories-collected))))))
+           (setq files-collected (append files-collected
+                                         (-flatten
+                                          (--map (f-files it
+                                                          (lambda (file)
+                                                            (s-matches? helm-org-rifle-directories-filename-regexp
+                                                                        (f-filename file)))
+                                                          recursive)
+                                                 directories-collected))))))
        ,(when files
           ;; Is there a nicer way to do this?
           `(setq files-collected (append files-collected ,files)))
