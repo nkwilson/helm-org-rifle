@@ -351,31 +351,38 @@ default.  Files in DIRECTORIES are filtered using
        ,args
      ,docstring
      (interactive)
-     ,preface
-     (when ,directories
-       ;; Is this the right way to do this?
-       (push ,directories directories))
-     (when directories
-       (let ((recursive (if current-prefix-arg
-                            (not helm-org-rifle-directories-recursive)
-                          helm-org-rifle-directories-recursive)))
-         (push (-flatten (--map (f-files it
-                                         (lambda (file)
-                                           (s-matches? helm-org-rifle-directories-filename-regexp (f-filename file)))
-                                         recursive)
-                                directories))
-               files)))
-     (when ,files
-       ;; Is this the right way to do this?
-       (push ,files files))
-     (when files
-       (push (cl-loop for file in files
-                      collect (-if-let (buffer (org-find-base-buffer-visiting file))
-                                  buffer
-                                (find-file-noselect file)))
-             buffers))
-     (let ((helm-org-rifle-show-full-contents t))
-       (helm-org-rifle-occur-begin ,buffers))))
+     (let (directories-collected files-collected buffers-collected)
+       ;; FIXME: If anyone's reading this and can help me clean up this macro a bit, help would be appreciated.
+       ,preface  ; Maybe not necessary
+       ,(when directories
+          ;; Is there a nicer way to do this?
+          `(setq directories-collected (append directories-collected ,directories)))
+       (when directories-collected
+         (let ((recursive (if current-prefix-arg
+                              (not helm-org-rifle-directories-recursive)
+                            helm-org-rifle-directories-recursive)))
+           (setq directories-collected (append directories-collected
+                                               (-flatten
+                                                (--map (f-files it
+                                                                (lambda (file)
+                                                                  (s-matches? helm-org-rifle-directories-filename-regexp
+                                                                              (f-filename file)))
+                                                                recursive)
+                                                       directories-collected))))))
+       ,(when files
+          ;; Is there a nicer way to do this?
+          `(setq files-collected (append files-collected ,files)))
+       (when files-collected
+         (setq buffers-collected (append (cl-loop for file in files-collected
+                                                  collect (-if-let (buffer (org-find-base-buffer-visiting file))
+                                                              buffer
+                                                            (find-file-noselect file)))
+                                         buffers-collected)))
+       ,(when buffers
+          ;; Is there a nicer way to do this?
+          `(setq buffers-collected (append buffers-collected ,buffers)))
+       (let ((helm-org-rifle-show-full-contents t))
+         (helm-org-rifle-occur-begin buffers-collected)))))
 
 ;;;###autoload
 (helm-org-rifle-define-occur-command nil nil
@@ -392,17 +399,15 @@ default.  Files in DIRECTORIES are filtered using
 (helm-org-rifle-define-occur-command "directories" (&optional directories)
                                      "Search files in DIRECTORIES, showing results in an occur-like, persistent buffer.
 Files are opened if necessary, and the resulting buffers are left open."
-                                     :preface (progn
-                                                (unless directories
-                                                  (setq directories (helm-read-file-name "Directories: " :marked-candidates t)))))
+                                     :directories (or directories
+                                                      (helm-read-file-name "Directories: " :marked-candidates t)))
 
 ;;;###autoload
 (helm-org-rifle-define-occur-command "files" (&optional files)
                                      "Search FILES, showing results in an occur-like, persistent buffer.
 Files are opened if necessary, and the resulting buffers are left open."
-                                     :preface (progn
-                                                (unless files
-                                                  (setq files (helm-read-file-name "Files: " :marked-candidates t)))))
+                                     :files (or files
+                                                (helm-read-file-name "Files: " :marked-candidates t)))
 
 ;;;###autoload
 (helm-org-rifle-define-occur-command "agenda-files" ()
