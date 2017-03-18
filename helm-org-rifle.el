@@ -763,20 +763,23 @@ This is how the sausage is made."
     (setq helm-org-rifle-occur-last-input input)
     (let ((inhibit-read-only t)
           (results-by-buffer (cl-loop for source-buffer in source-buffers
-                                      collect (helm-org-rifle-occur-get-results-in-buffer source-buffer input))))
+                                      collect (list :buffer source-buffer
+                                                    :results (helm-org-rifle-occur-get-results-in-buffer source-buffer input)))))
       (setq results-by-buffer (cl-loop for source-buffer in results-by-buffer
-                                       collect (->> source-buffer
-                                                    (helm-org-rifle-add-timestamps-to-nodes)
-                                                    (helm-org-rifle-sort-nodes-by-latest-timestamp))))
+                                       collect (with-current-buffer (plist-get source-buffer :buffer)
+                                                 (->> (plist-get source-buffer :results)
+                                                      (helm-org-rifle-add-timestamps-to-nodes)
+                                                      (helm-org-rifle-sort-nodes-by-latest-timestamp)))))
       (with-current-buffer results-buffer
         (erase-buffer)
         (cl-loop for buffer-results in results-by-buffer
                  when buffer-results
-                 do (let ((buffer-name (buffer-name (get-text-property 0 :buffer (car buffer-results)))))
+                 do (let ((buffer-name (buffer-name (plist-get (car buffer-results) :buffer))))
                       (helm-org-rifle-insert-source-header buffer-name)
                       (cl-loop for entry in buffer-results
-                               do (progn
-                                    (insert entry)
+                               do (-let (((plist &as :text text . rest) entry))
+                                    (add-text-properties 0 (length text) rest text)
+                                    (insert text)
                                     (insert "\n\n")))))
         (helm-org-rifle-occur-highlight-matches-in-buffer results-buffer input)))))
 
@@ -793,9 +796,10 @@ Results is a list of strings with text-properties :NODE-BEG and :BUFFER."
   (with-current-buffer buffer
     (unless (eq major-mode 'org-mode)
       (error "Buffer %s is not an Org buffer." buffer)))
-  (cl-loop for (text pos) in (helm-org-rifle-get-candidates-in-buffer buffer input)
-           do (add-text-properties 0 (length text) (list :buffer buffer :node-beg pos) text)
-           collect text))
+  (cl-loop for entry in (helm-org-rifle-get-candidates-in-buffer buffer input)
+           collect (-let (((text pos) entry))
+                     ;;  (add-text-properties 0 (length text) (list :buffer buffer :node-beg pos) text)
+                     (list :text text :buffer buffer :node-beg pos))))
 
 (defun helm-org-rifle-occur-goto-entry ()
   "Go to node in source buffer that point in occur buffer is in."
@@ -815,9 +819,7 @@ Results is a list of strings with text-properties :NODE-BEG and :BUFFER."
   "Return list of Org timestamp objects in node that begins at NODE-START or current point.
 Objects are those provided by `org-element-timestamp-parser'."
   (save-excursion
-    (goto-char (or node-start  ;; problem is that this is nil...??????
-                   ;; Problem here
-                   (org-entry-beginning-position)))
+    (goto-char (or node-start (org-entry-beginning-position)))
     (let ((node-end (or node-end (org-entry-end-position))))
       (cl-loop for ts-start = (cdr (org-element-timestamp-successor))
                while (and ts-start (< ts-start node-end))
@@ -852,7 +854,15 @@ NODES is a list of plists as returned by `helm-org-rifle-transform-candidates-to
 
 (defun helm-org-rifle-transformer-sort-by-latest-timestamp (candidates)
   "Sort CANDIDATES by latest timestamp in each candidate in SOURCE."
-  (with-current-buffer (helm-attr 'buffer) ; This is necessary or it will try to use the "*helm*" buffer instead of the source
+  (with-current-buffer (helm-attr 'buffer) ; This is necessary or it will try to use the "*helm*" buffer instead of the source.
+    ;; FIXME: This caused a lot of hair-pulling when adding the occur
+    ;; code, because the occur code doesn't use this transformer and
+    ;; so wasn't running the timestamp-getting function in the right
+    ;; buffer--it was running it in the minibuffer.  It would be good
+    ;; to make them use a common format so they could always use the
+    ;; transformer, but that wouldn't be as good for performance,
+    ;; because then the transformer would ALWAYS have to run.  Maybe
+    ;; it's worth it...
     (->> candidates
          (helm-org-rifle-transform-candidates-to-list-of-nodes)
          (helm-org-rifle-add-timestamps-to-nodes)
