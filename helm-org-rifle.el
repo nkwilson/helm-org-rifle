@@ -409,6 +409,7 @@ default.  Files in DIRECTORIES are filtered using
        ,args
      ,docstring
      (interactive)
+     (run-hooks 'helm-org-rifle-before-command-hook)
      (let (directories-collected files-collected buffers-collected)
        ;; FIXME: If anyone's reading this and can help me clean up this macro a bit, help would be appreciated.
        ,preface  ; Maybe not necessary
@@ -765,22 +766,26 @@ This is how the sausage is made."
           (results-by-buffer (cl-loop for source-buffer in source-buffers
                                       collect (list :buffer source-buffer
                                                     :results (helm-org-rifle-occur-get-results-in-buffer source-buffer input)))))
-      (setq results-by-buffer (cl-loop for source-buffer in results-by-buffer
-                                       collect (with-current-buffer (plist-get source-buffer :buffer)
-                                                 (->> (plist-get source-buffer :results)
-                                                      (helm-org-rifle-add-timestamps-to-nodes)
-                                                      (helm-org-rifle-sort-nodes-by-latest-timestamp)))))
+      (when (eq helm-org-rifle-transformer 'helm-org-rifle-transformer-sort-by-latest-timestamp)
+        ;; FIXME: Ugly hack.  Need to refactor a consistent way to set sorting and transformers.
+        (setq results-by-buffer (cl-loop for results-list in results-by-buffer
+                                         collect (-let (((plist &as :buffer buffer :results results) results-list))
+                                                   (list :buffer buffer
+                                                         :results (with-current-buffer buffer
+                                                                    (->> results
+                                                                         (helm-org-rifle-add-timestamps-to-nodes)
+                                                                         (helm-org-rifle-sort-nodes-by-latest-timestamp))))))))
       (with-current-buffer results-buffer
         (erase-buffer)
-        (cl-loop for buffer-results in results-by-buffer
-                 when buffer-results
-                 do (let ((buffer-name (buffer-name (plist-get (car buffer-results) :buffer))))
-                      (helm-org-rifle-insert-source-header buffer-name)
-                      (cl-loop for entry in buffer-results
-                               do (-let (((plist &as :text text . rest) entry))
-                                    (add-text-properties 0 (length text) rest text)
-                                    (insert text)
-                                    (insert "\n\n")))))
+        (cl-loop for results-list in results-by-buffer
+                 do (-let (((&plist :buffer buffer :results results) results-list))
+                      (when results
+                        (helm-org-rifle-insert-source-header (buffer-name buffer))
+                        (cl-loop for entry in results
+                                 do (-let (((plist &as :text text . rest) entry))
+                                      (add-text-properties 0 (length text) rest text)
+                                      (insert text)
+                                      (insert "\n\n"))))))
         (helm-org-rifle-occur-highlight-matches-in-buffer results-buffer input)))))
 
 (defun helm-org-rifle-occur-highlight-matches-in-buffer (buffer input)
