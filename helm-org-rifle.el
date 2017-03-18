@@ -47,14 +47,14 @@
 ;; entry, or <C-return> to show it in an indirect buffer.
 
 ;; Commands:
-;; +  `helm-org-rifle': Show results from all open Org buffers
-;; +  `helm-org-rifle-agenda-files': Show results from Org agenda files
-;; +  `helm-org-rifle-current-buffer': Show results from current buffer
-;; +  `helm-org-rifle-directories': Show results from selected directories; with prefix, recursively
-;; +  `helm-org-rifle-files': Show results from selected files
-;; +  `helm-org-rifle-org-directory': Show results from Org files in =org-directory=
-;; +  `helm-org-rifle-occur': Show results from all open Org buffers in an occur-like persistent buffer (instead of a Helm buffer)
-;; +  `helm-org-rifle-occur-current-buffer': Show results from current buffer in an occur-like persistent buffer (instead of a Helm buffer)
+;; + `helm-org-rifle': Show results from all open Org buffers
+;; + `helm-org-rifle-agenda-files': Show results from Org agenda files
+;; + `helm-org-rifle-current-buffer': Show results from current buffer
+;; + `helm-org-rifle-directories': Show results from selected directories; with prefix, recursively
+;; + `helm-org-rifle-files': Show results from selected files
+;; + `helm-org-rifle-org-directory': Show results from Org files in =org-directory=
+;; + `helm-org-rifle-occur': Show results from all open Org buffers in an occur-like persistent buffer (instead of a Helm buffer)
+;; + `helm-org-rifle-occur-current-buffer': Show results from current buffer in an occur-like persistent buffer (instead of a Helm buffer)
 
 ;;; Tips
 
