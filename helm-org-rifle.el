@@ -15,13 +15,12 @@
 ;; What does my rifle do?  It searches rapidly through my Org files,
 ;; quickly bringing me the information I need to defeat the enemy.
 
-;; This package is a continuation of the fantastic
-;; org-search-goto/org-search-goto-ml packages, now with Helm
-;; support. It searches both headings and contents of entries in Org
-;; buffers, and it displays entries that match all search terms,
-;; whether the terms appear in the heading, the contents, or both.
-;; Matching portions of entries' contents are displayed with
-;; surrounding context to make it easy to acquire your target.
+;; This package is inspired by org-search-goto/org-search-goto-ml.  It
+;; searches both headings and contents of entries in Org buffers, and
+;; it displays entries that match all search terms, whether the terms
+;; appear in the heading, the contents, or both.  Matching portions of
+;; entries' contents are displayed with surrounding context to make it
+;; easy to acquire your target.
 
 ;; Entries are fontified by default to match the appearance of an Org
 ;; buffer, and optionally the entire path can be displayed for each
@@ -48,30 +47,33 @@
 ;; entry, or <C-return> to show it in an indirect buffer.
 
 ;; Commands:
-;; + `helm-org-rifle': Show results from all open Org buffers
-;; + `helm-org-rifle-agenda-files': Show results from Org agenda files
-;; + `helm-org-rifle-current-buffer': Show results from current buffer
-;; + `helm-org-rifle-directories': Show results from selected directories; with prefix, recursively
-;; + `helm-org-rifle-files': Show results from selected files
-;; + `helm-org-rifle-org-directory': Show results from Org files in `org-directory'
+;; +  `helm-org-rifle': Show results from all open Org buffers
+;; +  `helm-org-rifle-agenda-files': Show results from Org agenda files
+;; +  `helm-org-rifle-current-buffer': Show results from current buffer
+;; +  `helm-org-rifle-directories': Show results from selected directories; with prefix, recursively
+;; +  `helm-org-rifle-files': Show results from selected files
+;; +  `helm-org-rifle-org-directory': Show results from Org files in =org-directory=
+;; +  `helm-org-rifle-occur': Show results from all open Org buffers in an occur-like persistent buffer (instead of a Helm buffer)
+;; +  `helm-org-rifle-occur-current-buffer': Show results from current buffer in an occur-like persistent buffer (instead of a Helm buffer)
 
 ;;; Tips
 
 ;; + Show results from certain buffers by typing the name of the
 ;;   buffer (usually the filename).
 ;; + Show headings with certain todo keywords by typing the keyword,
-;;   e.g. =TODO= or =DONE=.
-;; + Show headings with certain priorities by typing, e.g. =#A= or
-;;   =[#A]=.
-;; + Show headings with certain tags by searching for, e.g. =:tag1:=.
-;; + Exclude results with a =!=, e.g. =pepperoni !anchovies=.
+;;   e.g. "TODO" or "DONE".
+;; + Show headings with certain priorities by typing, e.g. "#A" or
+;;   "[#A]".
+;; + Show headings with certain tags by searching for, e.g. ":tag1:tag2:".
+;; + Exclude results with a "!", e.g. "pepperoni !anchovies".
 ;; + Show entries in an indirect buffer by selecting that action from
-;;   the Helm actions list, or by pressing =<C-return>=.
-;; + You can customize the =helm-org-rifle= group if you like.
+;;   the Helm actions list, or by pressing <C-return>.
+;; + The keymap for `helm-org-rifle-occur' results buffers imitates the =org-speed= keys, making it quicker to navigate. Results buffers are marked read-only so you cannot modify them by accidental keypresses.
+;; + You can customize the `helm-org-rifle' group if you like.
 
 ;;; Credits:
 
-;; This package is based on org-search-goto (specifically,
+;; This package is inspired by org-search-goto (specifically,
 ;; org-search-goto-ml).  Its unofficial-official home is on
 ;; EmacsWiki[1] but I've mirrored it on GitHub[2].  It's a really
 ;; great package, and the only thing that could make it better is to
