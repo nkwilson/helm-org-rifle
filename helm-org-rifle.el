@@ -764,6 +764,10 @@ This is how the sausage is made."
     (let ((inhibit-read-only t)
           (results-by-buffer (cl-loop for source-buffer in source-buffers
                                       collect (helm-org-rifle-occur-get-results-in-buffer source-buffer input))))
+      (setq results-by-buffer (cl-loop for source-buffer in results-by-buffer
+                                       collect (->> source-buffer
+                                                    (helm-org-rifle-add-timestamps-to-nodes)
+                                                    (helm-org-rifle-sort-nodes-by-latest-timestamp))))
       (with-current-buffer results-buffer
         (erase-buffer)
         (cl-loop for buffer-results in results-by-buffer
@@ -811,7 +815,9 @@ Results is a list of strings with text-properties :NODE-BEG and :BUFFER."
   "Return list of Org timestamp objects in node that begins at NODE-START or current point.
 Objects are those provided by `org-element-timestamp-parser'."
   (save-excursion
-    (goto-char (or node-start (org-entry-beginning-position)))
+    (goto-char (or node-start  ;; problem is that this is nil...??????
+                   ;; Problem here
+                   (org-entry-beginning-position)))
     (let ((node-end (or node-end (org-entry-end-position))))
       (cl-loop for ts-start = (cdr (org-element-timestamp-successor))
                while (and ts-start (< ts-start node-end))
