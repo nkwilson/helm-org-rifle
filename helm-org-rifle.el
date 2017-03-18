@@ -287,8 +287,9 @@ Helm will be called with VARS bound."
        (helm :sources ,sources))))
 
 ;;;###autoload
-(helm-org-rifle-define-command "" nil
-                 "This is my rifle.  There are many like it, but this one is mine.
+(helm-org-rifle-define-command
+ "" nil
+ "This is my rifle.  There are many like it, but this one is mine.
 
 My rifle is my best friend.  It is my life.  I must master it as I
 must master my life.
@@ -314,49 +315,53 @@ saviors of my life.
 
 So be it, until victory is ours and there is no enemy, but
 peace!"
-                 :sources (helm-org-rifle-get-sources-for-open-buffers))
+ :sources (helm-org-rifle-get-sources-for-open-buffers))
 
 ;;;###autoload
-(helm-org-rifle-define-command "current-buffer" nil
-                 "Rifle through the current buffer."
-                 :sources (helm-org-rifle-get-source-for-buffer (current-buffer)))
+(helm-org-rifle-define-command
+ "current-buffer" nil
+ "Rifle through the current buffer."
+ :sources (helm-org-rifle-get-source-for-buffer (current-buffer)))
 
 ;;;###autoload
-(helm-org-rifle-define-command "files" (&optional files)
-                 "Rifle through FILES, where FILES is a list of paths to Org files.
+(helm-org-rifle-define-command
+ "files" (&optional files)
+ "Rifle through FILES, where FILES is a list of paths to Org files.
 If FILES is nil, prompt with `helm-read-file-name'.  All FILES
 are searched; they are not filtered with
 `helm-org-rifle-directories-filename-regexp'."
-                 :sources (--map (helm-org-rifle-get-source-for-file it) files)
-                 :vars ((files (or files (helm-read-file-name "Files: " :marked-candidates t)))
-                        (helm-candidate-separator " ")
-                        (helm-cleanup-hook (lambda ()
-                                             ;; Close new buffers if enabled
-                                             (when helm-org-rifle-close-unopened-file-buffers
-                                               (if (= 0 helm-exit-status)
-                                                   ;; Candidate selected; close other new buffers
-                                                   (let ((candidate-source (helm-attr 'name (helm-get-current-source))))
-                                                     (dolist (source (helm-get-sources))
-                                                       (unless (or (equal (helm-attr 'name source)
-                                                                          candidate-source)
-                                                                   (not (helm-attr 'new-buffer source)))
-                                                         (kill-buffer (helm-attr 'buffer source)))))
-                                                 ;; No candidates; close all new buffers
-                                                 (dolist (source (helm-get-sources))
-                                                   (when (helm-attr 'new-buffer source)
-                                                     (kill-buffer (helm-attr 'buffer source))))))))))
+ :sources (--map (helm-org-rifle-get-source-for-file it) files)
+ :vars ((files (or files (helm-read-file-name "Files: " :marked-candidates t)))
+        (helm-candidate-separator " ")
+        (helm-cleanup-hook (lambda ()
+                             ;; Close new buffers if enabled
+                             (when helm-org-rifle-close-unopened-file-buffers
+                               (if (= 0 helm-exit-status)
+                                   ;; Candidate selected; close other new buffers
+                                   (let ((candidate-source (helm-attr 'name (helm-get-current-source))))
+                                     (dolist (source (helm-get-sources))
+                                       (unless (or (equal (helm-attr 'name source)
+                                                          candidate-source)
+                                                   (not (helm-attr 'new-buffer source)))
+                                         (kill-buffer (helm-attr 'buffer source)))))
+                                 ;; No candidates; close all new buffers
+                                 (dolist (source (helm-get-sources))
+                                   (when (helm-attr 'new-buffer source)
+                                     (kill-buffer (helm-attr 'buffer source))))))))))
 
 ;;;###autoload
-(helm-org-rifle-define-command "sort-by-latest-timestamp" nil
-                 "Rifle through open buffers, sorted by latest timestamp."
-                 :transformer 'helm-org-rifle-transformer-sort-by-latest-timestamp
-                 :sources (helm-org-rifle-get-sources-for-open-buffers))
+(helm-org-rifle-define-command
+ "sort-by-latest-timestamp" nil
+ "Rifle through open buffers, sorted by latest timestamp."
+ :transformer 'helm-org-rifle-transformer-sort-by-latest-timestamp
+ :sources (helm-org-rifle-get-sources-for-open-buffers))
 
 ;;;###autoload
-(helm-org-rifle-define-command "current-buffer-sort-by-latest-timestamp" nil
-                 "Rifle through the current buffer, sorted by latest timestamp."
-                 :transformer 'helm-org-rifle-transformer-sort-by-latest-timestamp
-                 :sources (helm-org-rifle-get-source-for-buffer (current-buffer)))
+(helm-org-rifle-define-command
+ "current-buffer-sort-by-latest-timestamp" nil
+ "Rifle through the current buffer, sorted by latest timestamp."
+ :transformer 'helm-org-rifle-transformer-sort-by-latest-timestamp
+ :sources (helm-org-rifle-get-source-for-buffer (current-buffer)))
 
 ;;;###autoload
 (defun helm-org-rifle-agenda-files ()
