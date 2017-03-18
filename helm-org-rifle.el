@@ -794,7 +794,15 @@ From `helm-insert-header'."
 
 (defun helm-org-rifle-occur-cleanup-buffer ()
   "Cleanup occur results buffer when search is aborted."
-  (kill-buffer helm-org-rifle-occur-results-buffer-name))
+  (interactive)
+  (ignore-errors
+    ;; Ignore errors to avoid any weirdness which may result in
+    ;; infinite loops and being stuck in the minibuffer.  This has
+    ;; never happened to me, of course...
+    (kill-buffer helm-org-rifle-occur-results-buffer-name)
+    ;; Not sure if this is absolutely necessary, but it seems to help
+    ;; avoid a weird bug, so it's staying.
+    (abort-recursive-edit)))
 
 (defun helm-org-rifle-prep-token (token)
   "Apply regexp prefix and suffix for TOKEN."
