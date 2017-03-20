@@ -122,10 +122,6 @@
 (defconst helm-org-rifle-occur-results-buffer-name "*helm-org-rifle-occur*"
   "The name of the results buffer for `helm-org-rifle-occur' commands.")
 
-(defconst helm-org-rifle-sort-transformers '(("Buffer order" :transformer nil)
-                                             ("Latest timestamp" :transformer helm-org-rifle-transformer-sort-by-latest-timestamp))
-  "List of transformer functions that sort results.  Not likely to be user-customized at this time.")
-
 (defconst helm-org-rifle-tags-re (org-re "\\(?:[ \t]+\\(:[[:alnum:]_@#%%:]+:\\)\\)?")
   "Regexp used to match Org tag strings.  From org.el.")
 
@@ -151,6 +147,10 @@ If you're thinking about changing this, you probably know what you're doing."
 
 (defcustom helm-org-rifle-before-command-hook '(helm-org-rifle-set-sort-mode)
   "Hook that runs before each helm-org-rifle command."
+  :group 'helm-org-rifle :type 'hook)
+
+(defcustom helm-org-rifle-after-command-hook '(helm-org-rifle-reset-sort-mode)
+  "Hook that runs after each helm-org-rifle command."
   :group 'helm-org-rifle :type 'hook)
 
 (defcustom helm-org-rifle-close-unopened-file-buffers t
@@ -235,6 +235,29 @@ because you can always revert your changes).)"
 \(What, didn't you read the last warning?  Oh, nevermind.)"
   :group 'helm-org-rifle :type 'regexp)
 
+(defcustom helm-org-rifle-sort-order nil
+  "Sort results in this order by default.
+The sort order may be changed temporarily by calling a command with a universal prefix (C-u).
+
+This is a list of functions which may be called to transform results, typically by sorting them."
+  ;; There seems to be a bug or at least inconsistency in the Emacs
+  ;; customize system.  Setting :tag in an item in a choice or radio
+  ;; list does not allow you to read the :tag from the choice as a
+  ;; plist key, because the key is the second value in the list,
+  ;; making the list not a plist at all.  Also, changing the order of
+  ;; the elements in a list item seems to break the customize dialog,
+  ;; e.g. causing the :tag description to not be shown at all.  It
+  ;; seems like Emacs handles these as pseudo-plists, with special
+  ;; code behind the scenes to handle plist keys that are not in
+  ;; actual plists.
+  :type '(radio (const :tag "Buffer order" nil)
+                (function-item :tag "Latest timestamp" helm-org-rifle-transformer-sort-by-latest-timestamp)
+                (function :tag "Custom function")))
+
+(defcustom helm-org-rifle-sort-order-persist nil
+  "When non-nil, keep the sort order setting when it is changed by calling a command with a universal prefix."
+  :group 'helm-org-rifle :type 'boolean)
+
 (defvar helm-org-rifle-occur-map (let ((map (copy-keymap org-mode-map)))
                                    (define-key map [mouse-1] 'helm-org-rifle-occur-goto-entry)
                                    (define-key map (kbd "<RET>") 'helm-org-rifle-occur-goto-entry)
@@ -259,7 +282,7 @@ because you can always revert your changes).)"
   "Last input given, used to avoid re-running search when input hasn't changed.")
 
 (defvar helm-org-rifle-transformer nil
-  "Transformer function, used for sorting.  Not intended to be set directly.")
+  "Function to transform results, usually for sorting.  Not intended to be user-set at this time.")
 
 ;;;; Functions
 
@@ -977,14 +1000,34 @@ i.e. for S \":tag1:tag2:\" a list '(\":tag1:\" \":tag2:\") is returned."
     (setq-local helm-input-idle-delay helm-org-rifle-input-idle-delay)))
 
 (defun helm-org-rifle-set-sort-mode ()
-  "Set sorting mode by setting `helm-org-rifle-transformer' if prefix given."
+  "Set sorting mode by setting `helm-org-rifle-sort-order' if prefix given."
   (cond ((equal '(4) current-prefix-arg)
          ;; C-u; set sorting mode
-         (setq helm-org-rifle-transformer (helm-org-rifle-prompt-for-sort-mode)))))
+         (customize-set-variable 'helm-org-rifle-sort-order (helm-org-rifle-prompt-for-sort-mode))))
+  (setq helm-org-rifle-transformer helm-org-rifle-sort-order))
+
+(defun helm-org-rifle-reset-sort-mode ()
+  "When `helm-org-rifle-sort-order-persist' is nil, reset sort order to the saved value."
+  ;; FIXME: This is inelegant, to say the least, but using hooks to do
+  ;; this means that a command can't simply be called inside a `let',
+  ;; so the value has to be set and then reset.  A dispatcher function
+  ;; which calls all commands might be a better way to do this.
+  (unless helm-org-rifle-sort-order-persist
+    (custom-reevaluate-setting 'helm-org-rifle-sort-order)))
 
 (defun helm-org-rifle-prompt-for-sort-mode ()
-  "Ask the user which sorting method to use."
-  (plist-get (helm-comp-read "Sort by: " helm-org-rifle-sort-transformers) :transformer))
+  "Ask the user which sorting method to use.
+Return sorting function corresponding to chosen description string."
+  ;; This mess is required because of what seems like a bug or
+  ;; inconsistency in the Emacs customize system.  See comments in the
+  ;; defcustom.
+  (let* ((choices (--remove (stringp (-last-item it)) ; Filter empty "Custom function"
+                            (cdr (get 'helm-org-rifle-sort-order 'custom-type))))
+         (choice-tag (helm-comp-read "Sort by: " (--map (third it)
+                                                        choices))))
+    (cl-loop for choice in choices
+             when (string= (third choice) choice-tag)
+             return (-last-item choice))))
 
 (defun helm-org-rifle-transform-candidates-to-list-of-nodes (candidates)
   "Transform Helm-style CANDIDATES list to list of plists."
