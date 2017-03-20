@@ -122,7 +122,8 @@
 (defconst helm-org-rifle-occur-results-buffer-name "*helm-org-rifle-occur*"
   "The name of the results buffer for `helm-org-rifle-occur' commands.")
 
-(defconst helm-org-rifle-sort-transformers '(nil helm-org-rifle-transformer-sort-by-latest-timestamp)
+(defconst helm-org-rifle-sort-transformers '(("Buffer order" :transformer nil)
+                                             ("Latest timestamp" :transformer helm-org-rifle-transformer-sort-by-latest-timestamp))
   "List of transformer functions that sort results.  Not likely to be user-customized at this time.")
 
 (defconst helm-org-rifle-tags-re (org-re "\\(?:[ \t]+\\(:[[:alnum:]_@#%%:]+:\\)\\)?")
@@ -983,7 +984,7 @@ i.e. for S \":tag1:tag2:\" a list '(\":tag1:\" \":tag2:\") is returned."
 
 (defun helm-org-rifle-prompt-for-sort-mode ()
   "Ask the user which sorting method to use."
-  (intern (helm-comp-read "Sort by: " helm-org-rifle-sort-transformers)))
+  (plist-get (helm-comp-read "Sort by: " helm-org-rifle-sort-transformers) :transformer))
 
 (defun helm-org-rifle-transform-candidates-to-list-of-nodes (candidates)
   "Transform Helm-style CANDIDATES list to list of plists."
