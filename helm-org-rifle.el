@@ -295,20 +295,23 @@ Helm will be called with vars in LET bound."
   `(cl-defun ,(intern (concat "helm-org-rifle" (when (s-present? name) (concat "-" name)))) ,args
      ,docstring
      (interactive)
-     (run-hooks 'helm-org-rifle-before-command-hook)
-     (let* ((helm-candidate-separator " ")
-            ,(if transformer
-                 ;; I wish there were a cleaner way to do this,
-                 ;; because if this `if' evaluates to nil, `let' will
-                 ;; try to set `nil', which causes an error.  The
-                 ;; choices seem to be to a) evaluate to a list and
-                 ;; unsplice it (since unsplicing `nil' evaluates to
-                 ;; nothing), or b) return an ignored symbol when not
-                 ;; true.  Option B is less ugly.
-                 `(helm-org-rifle-transformer ,transformer)
-               'ignore)
-            ,@let)
-       (helm :sources ,sources))))
+     (unwind-protect
+         (progn
+           (run-hooks 'helm-org-rifle-before-command-hook)
+           (let* ((helm-candidate-separator " ")
+                  ,(if transformer
+                       ;; I wish there were a cleaner way to do this,
+                       ;; because if this `if' evaluates to nil, `let' will
+                       ;; try to set `nil', which causes an error.  The
+                       ;; choices seem to be to a) evaluate to a list and
+                       ;; unsplice it (since unsplicing `nil' evaluates to
+                       ;; nothing), or b) return an ignored symbol when not
+                       ;; true.  Option B is less ugly.
+                       `(helm-org-rifle-transformer ,transformer)
+                     'ignore)
+                  ,@let)
+             (helm :sources ,sources)))
+       (run-hooks 'helm-org-rifle-after-command-hook))))
 
 ;;;###autoload
 (helm-org-rifle-define-command
@@ -433,39 +436,42 @@ default.  Files in DIRECTORIES are filtered using
        ,args
      ,docstring
      (interactive)
-     (run-hooks 'helm-org-rifle-before-command-hook)
-     (let (directories-collected files-collected buffers-collected)
-       ;; FIXME: If anyone's reading this and can help me clean up this macro a bit, help would be appreciated.
-       ,preface  ; Maybe not necessary
-       ,(when directories
-          ;; Is there a nicer way to do this?
-          `(setq directories-collected (append directories-collected ,directories)))
-       (when directories-collected
-         (let ((recursive (if current-prefix-arg
-                              (not helm-org-rifle-directories-recursive)
-                            helm-org-rifle-directories-recursive)))
-           (setq files-collected (append files-collected
-                                         (-flatten
-                                          (--map (f-files it
-                                                          (lambda (file)
-                                                            (s-matches? helm-org-rifle-directories-filename-regexp
-                                                                        (f-filename file)))
-                                                          recursive)
-                                                 directories-collected))))))
-       ,(when files
-          ;; Is there a nicer way to do this?
-          `(setq files-collected (append files-collected ,files)))
-       (when files-collected
-         (setq buffers-collected (append (cl-loop for file in files-collected
-                                                  collect (-if-let (buffer (org-find-base-buffer-visiting file))
-                                                              buffer
-                                                            (find-file-noselect file)))
-                                         buffers-collected)))
-       ,(when buffers
-          ;; Is there a nicer way to do this?
-          `(setq buffers-collected (append buffers-collected ,buffers)))
-       (let ((helm-org-rifle-show-full-contents t))
-         (helm-org-rifle-occur-begin buffers-collected)))))
+     (unwind-protect
+         (progn
+           (run-hooks 'helm-org-rifle-before-command-hook)
+           (let (directories-collected files-collected buffers-collected)
+             ;; FIXME: If anyone's reading this and can help me clean up this macro a bit, help would be appreciated.
+             ,preface  ; Maybe not necessary
+             ,(when directories
+                ;; Is there a nicer way to do this?
+                `(setq directories-collected (append directories-collected ,directories)))
+             (when directories-collected
+               (let ((recursive (if current-prefix-arg
+                                    (not helm-org-rifle-directories-recursive)
+                                  helm-org-rifle-directories-recursive)))
+                 (setq files-collected (append files-collected
+                                               (-flatten
+                                                (--map (f-files it
+                                                                (lambda (file)
+                                                                  (s-matches? helm-org-rifle-directories-filename-regexp
+                                                                              (f-filename file)))
+                                                                recursive)
+                                                       directories-collected))))))
+             ,(when files
+                ;; Is there a nicer way to do this?
+                `(setq files-collected (append files-collected ,files)))
+             (when files-collected
+               (setq buffers-collected (append (cl-loop for file in files-collected
+                                                        collect (-if-let (buffer (org-find-base-buffer-visiting file))
+                                                                    buffer
+                                                                  (find-file-noselect file)))
+                                               buffers-collected)))
+             ,(when buffers
+                ;; Is there a nicer way to do this?
+                `(setq buffers-collected (append buffers-collected ,buffers)))
+             (let ((helm-org-rifle-show-full-contents t))
+               (helm-org-rifle-occur-begin buffers-collected))))
+       (run-hooks 'helm-org-rifle-after-command-hook))))
 
 ;;;###autoload
 (helm-org-rifle-define-occur-command
@@ -1003,7 +1009,7 @@ i.e. for S \":tag1:tag2:\" a list '(\":tag1:\" \":tag2:\") is returned."
   "Set sorting mode by setting `helm-org-rifle-sort-order' if prefix given."
   (cond ((equal '(4) current-prefix-arg)
          ;; C-u; set sorting mode
-         (customize-set-variable 'helm-org-rifle-sort-order (helm-org-rifle-prompt-for-sort-mode))))
+         (setq helm-org-rifle-sort-order (helm-org-rifle-prompt-for-sort-mode))))
   (setq helm-org-rifle-transformer helm-org-rifle-sort-order))
 
 (defun helm-org-rifle-reset-sort-mode ()
