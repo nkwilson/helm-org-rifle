@@ -72,6 +72,7 @@
 ;;   "[#A]".
 ;; + Show headings with certain tags by searching for, e.g. ":tag1:tag2:".
 ;; + Exclude results with a "!", e.g. "pepperoni !anchovies".
+;; + Change the default sort order by calling commands with a universal prefix (C-u).
 ;; + Show entries in an indirect buffer by selecting that action from
 ;;   the Helm actions list, or by pressing <C-return>.
 ;; + The keymap for `helm-org-rifle-occur' results buffers imitates the =org-speed= keys, making it quicker to navigate. Results buffers are marked read-only so you cannot modify them by accidental keypresses.
